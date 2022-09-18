@@ -10,7 +10,7 @@ NC='\033[0m'
 echo -e ${BLUE}Setting up installation container
 yum install -y git docker >&/dev/null
 echo Cloning repo
-git clone https://github.com/sensre/px-deploy.git >&/dev/null
+git clone https://github.com/andrewh1978/px-deploy.git >&/dev/null
 cd px-deploy
 git checkout $(cat VERSION)
 echo Building container

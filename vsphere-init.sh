@@ -139,7 +139,7 @@ yum -y install kernel-headers nfs-utils dnf jq bash-completion nfs-utils chrony 
 yum update -y glib2
 %end
 
-reboot --eject
+reboot
 EOF
 
 cd /
