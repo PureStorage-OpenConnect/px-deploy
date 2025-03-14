@@ -13,6 +13,7 @@
 
 S3_BUCKET=px-deploy
 PXDTEMPLATEID=$(date '+%Y%m%d%H%M%S')
+KEYPAIR="~/.ssh/id_rsa"
 
 #check if ovftool is within path
 if [ ! $(type -P ovftool) ]; then
@@ -58,7 +59,7 @@ cat <<EOF >./tmp/vsphere-rocky.json
     "vm-cpu-num": "4",
     "vm-mem-size": "8192",
     "vm-disk-size": "52000",
-    "iso_url": "https://dl.rockylinux.org/vault/rocky/8.7/isos/x86_64/Rocky-8.7-x86_64-minimal.iso",
+    "iso_url": "https://dl.rockylinux.org/vault/rocky/9.4/isos/x86_64/Rocky-9.4-x86_64-minimal.iso",
     "kickstart_file": "/vsphere-ks.cfg"
   },
   "builders": [
@@ -94,7 +95,7 @@ cat <<EOF >./tmp/vsphere-rocky.json
       "guest_os_type": "rhel8_64Guest",
       "vm_version": "14",
       "insecure_connection": "true",
-      "iso_checksum": "sha256:13c3e7fca1fd32df61695584baafc14fa28d62816d0813116d23744f5394624b",
+      "iso_checksum": "sha256:ee3ac97fdffab58652421941599902012179c37535aece76824673105169c4a2",
       "iso_url": "{{user \`iso_url\`}}",
       "cd_files": ["./vsphere-ks.cfg"],
       "cd_label": "kickstart",
@@ -109,7 +110,7 @@ cat <<EOF >./tmp/vsphere-rocky.json
       "destroy": "true",
       "resource_pool": "{{user \`vsphere-resource-pool\`}}",
       "ssh_username": "root",
-      "ssh_password": "portworx",
+      "ssh_private_key_file": "$KEYPAIR",
       "storage": [
         {
           "disk_size": "{{user \`vm-disk-size\`}}",
@@ -125,11 +126,7 @@ cat <<EOF >./tmp/vsphere-rocky.json
   "provisioners": [
     {
       "inline": [
-        "sudo dnf install -y cloud-init",
-        "sudo dnf install -y epel-release",
-        "sudo dnf install -y python3-devel",
-        "sudo dnf install -y python3-pip",
-        "sudo curl -sSL https://raw.githubusercontent.com/vmware/cloud-init-vmware-guestinfo/master/install.sh | sudo sh -"
+        "sudo dnf install -y cloud-init"
       ],
       "type": "shell"
     }
@@ -138,46 +135,54 @@ cat <<EOF >./tmp/vsphere-rocky.json
 EOF
 
 cat <<EOF >./tmp/vsphere-ks.cfg
-repo --name=BaseOS --baseurl=https://dl.rockylinux.org/vault/rocky/8.7/BaseOS/x86_64/os/
-repo --name=AppStream --baseurl=https://dl.rockylinux.org/vault/rocky/8.7/AppStream/x86_64/os/
+repo --name=BaseOS --baseurl=https://dl.rockylinux.org/vault/rocky/9.4/BaseOS/x86_64/os/
+repo --name=AppStream --baseurl=https://dl.rockylinux.org/vault/rocky/9.4/AppStream/x86_64/os/
 text
 firstboot --enable
 ignoredisk --only-use=sda
 keyboard --vckeymap=us --xlayouts='us'
 lang en_US.UTF-8
-network  --bootproto=dhcp --device=link --onboot=true --noipv6
+#network  --bootproto=dhcp --device=ens192 --onboot=true --noipv6
+network  --bootproto=static --ip=10.220.113.220 --netmask=255.255.254.0 --gateway=10.220.112.1 --nameserver=10.220.255.252 --device=ens192 --onboot=true --noipv6
 network  --hostname=localhost.localdomain
 rootpw portworx
+sshkey --username=root "$(cat ~/.ssh/id_rsa.pub)"
 services --disabled="chronyd,avahi-daemon.service,bluetooth.service,rhnsd.service,rhsmcertd.service"
-timezone UTC --isUtc --nontp
+timezone UTC --utc
+timesource --ntp-disable
 clearpart --all --initlabel
 part /boot/efi --fstype=vfat --fsoptions='defaults,umask=0027,fmask=0077,uid=0,gid=0' --size=600 --ondisk=/dev/sda
 part /boot --fstype=xfs --fsoptions='nosuid,nodev' --size=1024 --ondisk=/dev/sda
 part / --fstype="xfs" --ondisk=sda --size=50000
-bootloader --append="rd.driver.blacklist=dm-multipath,crashkernel=auto" --location=mbr --boot-drive=sda
+bootloader --append="rd.driver.blacklist=dm-multipath,crashkernel=1G-4G:192M,4G-64G:256M,64G-:512M" --location=mbr --boot-drive=sda
 
 cdrom
 
 %packages
 @base
 @core
+dnf
 kexec-tools
-
-%end
-
-
-%anaconda
-pwpolicy root --minlen=6 --minquality=1 --notstrict --nochanges --notempty
-pwpolicy user --minlen=6 --minquality=1 --notstrict --nochanges --emptyok
-pwpolicy luks --minlen=6 --minquality=1 --notstrict --nochanges --notempty
+open-vm-tools
+kernel-headers 
+nfs-utils 
+jq 
+bash-completion 
+nfs-utils 
+chrony 
+docker 
+vim-enhanced 
+git
+glib2
+python3-devel
+python3-pip
 %end
 
 %post
-dnf -y install open-vm-tools
 systemctl enable vmtoolsd
 systemctl start vmtoolsd
-dnf -y install kernel-headers nfs-utils jq bash-completion nfs-utils chrony docker vim-enhanced git
-dnf update -y glib2
+dnf -y install epel-release
+dnf update -y
 dnf clean all
 %end
 
@@ -202,18 +207,18 @@ if [ $? != 0 ]; then
 fi
 
 echo "3. copy ova to s3"
-aws s3 cp template.ova s3://$S3_BUCKET/templates/template.ova
+aws s3 cp template.ova s3://$S3_BUCKET/templates/template_r94.ova
 if [ $? != 0 ]; then
   echo "s3 template upload failed"
   exit
 fi
 
-echo "4. copy pxdid.txt to s3"
-aws s3 cp pxdid.txt s3://$S3_BUCKET/templates/pxdid.txt
-if [ $? != 0 ]; then
-  echo "s3 pxdid.txt upload failed"
-  exit
-fi
+#echo "4. copy pxdid.txt to s3"
+#aws s3 cp pxdid.txt s3://$S3_BUCKET/templates/pxdid.txt
+#if [ $? != 0 ]; then
+#  echo "s3 pxdid.txt upload failed"
+#  exit
+#fi
 
 cd ..
 rm -rf tmp
