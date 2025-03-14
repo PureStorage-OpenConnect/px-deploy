@@ -1,6 +1,6 @@
 [ -f /tmp/credentials ] && mkdir /root/.aws && mv /tmp/credentials /root/.aws
 [ -f /tmp/gcp.json ] && mv /tmp/gcp.json /root/
-mv /tmp/assets /assets
+
 echo 'source <(kubectl completion bash 2>/dev/null)' >>/etc/bash_completion.d/kubectl
 echo 'source <(oc completion bash 2>/dev/null)' >>/etc/bash_completion.d/oc
 curl -sLO https://raw.githubusercontent.com/jonmosco/kube-ps1/refs/tags/v0.9.0/kube-ps1.sh

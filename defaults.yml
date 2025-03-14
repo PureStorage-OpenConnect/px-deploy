@@ -4,7 +4,7 @@ clusters: 1
 nodes: 3
 #ssh_pub_key: "ssh-rsa XXXXXXXXXXXXXXXXXXXXXX user@example"
 k8s_version: 1.28.9
-px_version: 3.2.1
+px_version: 3.2.2
 stop_after: 6
 post_script: show-ip
 quiet: false

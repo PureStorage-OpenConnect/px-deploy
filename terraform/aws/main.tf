@@ -55,7 +55,8 @@ data "aws_ami" "rocky" {
   most_recent = true
   filter {
     name   = "name"
-    values = ["Rocky-8-ec2-8.6-20220515.0.x86_64-d6577ceb-8ea8-4e0e-84c6-f098fc302e82"]
+    #values = ["Rocky-8-ec2-8.6-20220515.0.x86_64-d6577ceb-8ea8-4e0e-84c6-f098fc302e82"]
+	values = ["Rocky-9-EC2-Base-9.4-20240523.0.x86_64-3f230a17-9877-4b16-aa5e-b1ff34ab206b"]
   }
    
   filter {
