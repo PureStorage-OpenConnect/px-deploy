@@ -87,7 +87,7 @@ resource "local_file" "startup-script" {
 
 data "google_compute_image" "rocky" {
 	project  = "rocky-linux-cloud"
-	family = "rocky-linux-8-optimized-gcp"
+	family = "rocky-linux-9-optimized-gcp"
 }
 
 locals {

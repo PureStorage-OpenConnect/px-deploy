@@ -11,6 +11,9 @@
 
 # install & configure awscli
 
+# check network config for build vm in vsphere-ks file 
+# 
+
 S3_BUCKET=px-deploy
 PXDTEMPLATEID=$(date '+%Y%m%d%H%M%S')
 KEYPAIR="~/.ssh/id_rsa"
@@ -207,18 +210,18 @@ if [ $? != 0 ]; then
 fi
 
 echo "3. copy ova to s3"
-aws s3 cp template.ova s3://$S3_BUCKET/templates/template_r94.ova
+aws s3 cp template.ova s3://$S3_BUCKET/templates/template.ova
 if [ $? != 0 ]; then
   echo "s3 template upload failed"
   exit
 fi
 
-#echo "4. copy pxdid.txt to s3"
-#aws s3 cp pxdid.txt s3://$S3_BUCKET/templates/pxdid.txt
-#if [ $? != 0 ]; then
-#  echo "s3 pxdid.txt upload failed"
-#  exit
-#fi
+echo "4. copy pxdid.txt to s3"
+aws s3 cp pxdid.txt s3://$S3_BUCKET/templates/pxdid.txt
+if [ $? != 0 ]; then
+  echo "s3 pxdid.txt upload failed"
+  exit
+fi
 
 cd ..
 rm -rf tmp
