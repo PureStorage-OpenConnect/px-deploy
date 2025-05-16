@@ -1,6 +1,0 @@
-if [ "$platform" = eks ]; then
-  kubectl create secret generic --from-file=$HOME/.aws/credentials -n portworx aws-creds
-  kubectl patch stc px-deploy-1 -n portworx --type='json' -p '[{"op":"add","path":"/spec/stork/volumes","value":[{"mountPath":"/root/.aws","name":"aws-creds","secret":{"secretName":"aws-creds"}}]}]'
-fi
-
-kubectl apply -f /assets/async-dr.yaml

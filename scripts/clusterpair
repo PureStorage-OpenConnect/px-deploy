@@ -1,14 +1,6 @@
-# Configures cluster pairs between cluster and cluster 1
-#
-while : ; do
-  token=$(kubectl exec -n portworx -it $(kubectl get pods -n portworx -lname=portworx --field-selector=status.phase=Running | tail -1 | cut -f 1 -d " ") -- /opt/pwx/bin/pxctl cluster token show 2>/dev/null | cut -f 3 -d " ")
-  echo $token | grep -Eq '\w{128}'
-  [ $? -eq 0 ] && break
-  sleep 5
-  echo waiting for portworx
-done
+# Configures cluster pairs between cluster 1 and cluster 2
+# this script is expected to run on master-2
 
-UUID=$(kubectl get stc -n portworx -o jsonpath='{.items[].status.clusterUid}')
 AWS_ACCESS_KEY=$(sed -n 's/aws_access_key_id[ =]*//p' /root/.aws/credentials 2>/dev/null | head -1)
 AWS_SECRET_KEY=$(sed -n 's/aws_secret_access_key[ =]*//p' /root/.aws/credentials 2>/dev/null | head -1)
 
@@ -20,22 +12,59 @@ if [ "$BUCKET_REGION" = "None" ]; then
   BUCKET_REGION="us-east-1"
 fi
 echo "Bucket region: $BUCKET_REGION"
-while : ; do
-  kubectl exec $(kubectl get pod -n portworx -lname=portworx | tail -1 | cut -f 1 -d " ") -n portworx -c portworx -- /opt/pwx/bin/pxctl credentials delete clusterPair_$UUID
-  kubectl exec $(kubectl get pod -n portworx -lname=portworx | tail -1 | cut -f 1 -d " ") -n portworx -c portworx -- /opt/pwx/bin/pxctl credentials create --provider s3 --s3-access-key $AWS_ACCESS_KEY --s3-secret-key $AWS_SECRET_KEY --s3-region $BUCKET_REGION --s3-endpoint s3.$BUCKET_REGION.amazonaws.com --s3-storage-class STANDARD --bucket $DR_BUCKET clusterPair_$UUID
-  [ $? -eq 0 ] && break
-  sleep 1
-done
-while : ; do
-  ssh master-1 kubectl exec '$(kubectl get pod -n portworx -lname=portworx | tail -1 | cut -f 1 -d " ") -n portworx -c portworx -- /opt/pwx/bin/pxctl credentials create --provider s3 --s3-access-key '$AWS_ACCESS_KEY' --s3-secret-key '$AWS_SECRET_KEY' --s3-region '$BUCKET_REGION' --s3-endpoint s3.'$BUCKET_REGION'.amazonaws.com --s3-storage-class STANDARD --bucket '$DR_BUCKET' clusterPair_'$UUID
-  [ $? -eq 0 ] && break
-  sleep 1
-done
 
-storkctl generate clusterpair -n kube-system remotecluster | sed "/insert_storage_options_here/c\    ip: node-$cluster-1\n    token: $token" >/var/tmp/cp.yaml
+scp root@master-1:/root/.kube/config /tmp/dest_kubeconfig
 
-while : ; do
-  cat /var/tmp/cp.yaml | ssh -oConnectTimeout=1 -oStrictHostKeyChecking=no master-1 kubectl apply -f -
-  [ $? -eq 0 ] && break
-  sleep 5
-done
+if [ "$platform" = eks ] || [ "$platform" = ocp4 ]; then
+  # expose local px api on svc type LB
+  kubectl patch stc $(kubectl get stc -n portworx -o jsonpath='{.items[].metadata.name}') -n portworx --type='json' -p '[{"op":"add","path":"/metadata/annotations/portworx.io~1service-type","value":"portworx-api:LoadBalancer"}]'
+  # expose remote px api on svc type LB
+  kubectl --kubeconfig /tmp/dest_kubeconfig patch stc $(kubectl --kubeconfig /tmp/dest_kubeconfig get stc -n portworx -o jsonpath='{.items[].metadata.name}') -n portworx --type='json' -p '[{"op":"add","path":"/metadata/annotations/portworx.io~1service-type","value":"portworx-api:LoadBalancer"}]'
+  
+  echo "waiting for local px api lb service creation"
+  while ! kubectl wait -n portworx --for=jsonpath=.status.loadBalancer.ingress[].hostname services/portworx-api; do
+    echo "waiting for local px api lb service creation"
+  done
+
+  echo "waiting for remote px api lb service creation"
+  while ! kubectl --kubeconfig /tmp/dest_kubeconfig wait -n portworx --for=jsonpath=.status.loadBalancer.ingress[].hostname services/portworx-api; do
+    echo "waiting for remote px api lb service creation"
+  done
+
+  LOCAL_EP=$(kubectl get svc portworx-api -n portworx -ojson | jq -r ".status.loadBalancer.ingress[0].hostname")
+  REMOTE_EP=$(kubectl --kubeconfig /tmp/dest_kubeconfig get svc portworx-api -n portworx -ojson | jq -r ".status.loadBalancer.ingress[0].hostname")
+
+  echo "waiting for local portworx api lb service to respond http 200 ELB $LOCAL_EP"
+  while [ $(curl -s -o /dev/null -w "%{http_code}" $LOCAL_EP:9021/v1/identities/version) != "200" ]; do
+    echo "waiting for local portworx api lb service to respond http 200 ELB $LOCAL_EP"
+    sleep 5
+  done
+  
+  echo "waiting for remote portworx api lb service to respond http 200. ELB $REMOTE_EP"
+  while [ $(curl -s -o /dev/null -w "%{http_code}" $REMOTE_EP:9021/v1/identities/version) != "200" ]; do
+    echo "waiting for remote portworx api lb service to respond http 200. ELB $REMOTE_EP"
+    sleep 5
+  done
+#elif [ "$platform" = rancher ]; then
+#else
+#  host=$(kubectl get nodes -l 'node-role.kubernetes.io/worker in (worker,true)' -o json |jq -r '.items[0].status.addresses[] | select(.type=="InternalIP") | .address')
+fi
+
+#improvement: we may try to detect if DR licenses are enabled on both sides -> px api?
+if [ -z "$licenses" ]; then
+  echo '$licenses is empty. creating migration clusterpair'
+  MODE="migration"
+else
+  echo '$licenses is set. creating migration clusterpair - please ensure license is valid'
+  MODE="async-dr"
+fi
+
+if [ "$platform" = eks ]; then
+  kubectl create secret generic --from-file=$HOME/.aws/credentials -n portworx aws-creds
+  kubectl --kubeconfig /tmp/dest_kubeconfig create secret generic --from-file=$HOME/.aws/credentials -n portworx aws-creds
+  
+  kubectl patch stc $(kubectl get stc -n portworx -o jsonpath='{.items[].metadata.name}') -n portworx --type='json' -p '[{"op":"add","path":"/spec/stork/volumes","value":[{"mountPath":"/root/.aws","name":"aws-creds","secret":{"secretName":"aws-creds"}}]}]'
+  kubectl patch stc $(kubectl --kubeconfig /tmp/dest_kubeconfig get stc -n portworx -o jsonpath='{.items[].metadata.name}') -n portworx --type='json' -p '[{"op":"add","path":"/spec/stork/volumes","value":[{"mountPath":"/root/.aws","name":"aws-creds","secret":{"secretName":"aws-creds"}}]}]'
+fi
+
+storkctl create clusterpair remotecluster --namespace kube-system --dest-kube-file /tmp/dest_kubeconfig --src-kube-file /root/.kube/config --provider s3 --s3-endpoint s3.amazonaws.com --s3-access-key $AWS_ACCESS_KEY --s3-secret-key $AWS_SECRET_KEY --s3-region $BUCKET_REGION  --bucket $DR_BUCKET --mode $MODE

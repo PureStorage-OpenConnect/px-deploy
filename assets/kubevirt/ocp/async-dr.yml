@@ -14,7 +14,7 @@ metadata:
 spec:
   template:
     spec:
-      clusterPair: remotecluster-2
+      clusterPair: remotecluster
       includeResources: true
       startApplications: false
       excludeSelectors:

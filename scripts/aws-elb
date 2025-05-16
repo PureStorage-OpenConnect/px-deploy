@@ -1,22 +1,26 @@
-region=$(curl -s http://169.254.169.254/latest/meta-data/placement/availability-zone | sed 's/.$//')
-aws configure set default.region $region
-instance_id=$(curl -s http://169.254.169.254/latest/meta-data/instance-id)
-vpc=$(aws ec2 describe-instances --instance-ids $instance_id --query Reservations[0].Instances[0].VpcId --output text)
-subnet=$(aws ec2 describe-instances --instance-ids $instance_id --query Reservations[0].Instances[0].SubnetId --output text)
+if [ $platform != eks ] && [ $platform != gke ] && [ $platform != ocp4 ] && [ $platform != rancher ] && [ $platform != aks ]; then
+    region=$(curl -s http://169.254.169.254/latest/meta-data/placement/availability-zone | sed 's/.$//')
+    aws configure set default.region $region
+    instance_id=$(curl -s http://169.254.169.254/latest/meta-data/instance-id)
+    vpc=$(aws ec2 describe-instances --instance-ids $instance_id --query Reservations[0].Instances[0].VpcId --output text)
+    subnet=$(aws ec2 describe-instances --instance-ids $instance_id --query Reservations[0].Instances[0].SubnetId --output text)
 
-#sg=$(aws ec2 describe-security-groups --filters Name=group-name,Values=px-deploy Name=vpc-id,Values=$vpc --query SecurityGroups[].GroupId --output text)
-sg=$(aws ec2 create-security-group --group-name px-deploy-$name-elb --vpc $vpc --description "px-deploy aws elb" --query "GroupId" --output text)
-aws ec2 authorize-security-group-ingress --group-id $sg --protocol tcp --port 80 --cidr 0.0.0.0/0
+    #sg=$(aws ec2 describe-security-groups --filters Name=group-name,Values=px-deploy Name=vpc-id,Values=$vpc --query SecurityGroups[].GroupId --output text)
+    sg=$(aws ec2 create-security-group --group-name px-deploy-$name-elb --vpc $vpc --description "px-deploy aws elb" --query "GroupId" --output text)
+    aws ec2 authorize-security-group-ingress --group-id $sg --protocol tcp --port 80 --cidr 0.0.0.0/0
 
-instances=$(aws ec2 describe-instances --filters "Name=network-interface.vpc-id,Values=$vpc" --query "Reservations[*].Instances[*].InstanceId" --output text)
-for i in $instances; do
-aws ec2 describe-instances --instance-id $i --query Reservations[].Instances[].Tags --output text | grep -q Name.*node
-[ $? -eq 0 ] && elb_instances="$elb_instances $i"
-done
-aws elb create-load-balancer --load-balancer-name px-deploy-$name --listeners Protocol=http,LoadBalancerPort=80,InstanceProtocol=http,InstancePort=30333 --security-groups $sg --subnets $subnet
-aws elb configure-health-check --load-balancer-name px-deploy-$name --health-check Target=HTTP:30333/,Interval=10,UnhealthyThreshold=2,HealthyThreshold=2,Timeout=5
-aws elb register-instances-with-load-balancer --load-balancer-name px-deploy-$name --instances $elb_instances
+    instances=$(aws ec2 describe-instances --filters "Name=network-interface.vpc-id,Values=$vpc" --query "Reservations[*].Instances[*].InstanceId" --output text)
+    for i in $instances; do
+        aws ec2 describe-instances --instance-id $i --query Reservations[].Instances[].Tags --output text | grep -q Name.*node
+        [ $? -eq 0 ] && elb_instances="$elb_instances $i"
+    done
+    aws elb create-load-balancer --load-balancer-name px-deploy-$name --listeners Protocol=http,LoadBalancerPort=80,InstanceProtocol=http,InstancePort=30333 --security-groups $sg --subnets $subnet
+    aws elb configure-health-check --load-balancer-name px-deploy-$name --health-check Target=HTTP:30333/,Interval=10,UnhealthyThreshold=2,HealthyThreshold=2,Timeout=5
+    aws elb register-instances-with-load-balancer --load-balancer-name px-deploy-$name --instances $elb_instances
 
-elb_dnsname=$(aws elb describe-load-balancers --query "LoadBalancerDescriptions[].{a:VPCId,b:DNSName}" --output text | awk /$vpc/'{print$2}')
+    elb_dnsname=$(aws elb describe-load-balancers --query "LoadBalancerDescriptions[].{a:VPCId,b:DNSName}" --output text | awk /$vpc/'{print$2}')
 
-echo "AWS ELB URL for app is: $elb_dnsname" >> /etc/motd
+    echo "AWS ELB URL for app is: $elb_dnsname" >> /etc/motd
+else
+    echo "Cluster platform is $platform. Skipping creation of AWS ELB"
+fi

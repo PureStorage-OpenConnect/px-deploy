@@ -54,11 +54,9 @@ env:
  
 * `$ storkctl get migrations -n kube-system`
 
-* suspend migration 
+* **c2cli**: run a controlled failover of application `$ storkctl perform failover -m pxbbq -n kube-system`
 
-* `$ storkctl suspend migrationschedules pxbbq -n kube-system`
-
-* **c2cli**:  activate migration `$ storkctl activate migrations -n pxbbq`
+* **c2cli**: watch the failover progressing `storkctl get failover failover-pxbbq-xxxxxxxxxxxx -n kube-system`
 
 * **c2ui**: show pods / vm in pxbbq namespace coming up
 
@@ -83,14 +81,3 @@ env:
 * when backup is taken, restore to cluster-1. exclude route
 
 * while restore running, switch to cluster1 ui to show everything is empty
-
-
-### Known Issues
-
-* in case pxbbq deployment fails you can delete the default (FreeBSD) Deployment and try Ubuntu
-
-* **c1cli**: `$ kubectl delete -f /assets/kubevirt/pxbbq-freebsd.yml`
-
-* `$ kubectl apply -f /assets/kubevirt/ubuntu-dv.yml`
-
-* `$ kubectl apply -f /assets/kubevirt/pxbbq.yml`
