@@ -1,4 +1,4 @@
-<!-- If you update this, you probably also want to update the Async-DR document -->
+<!-- If you update this, you probably also want to update the Async-DR and Metro documents -->
 # PX-Migrate
 
 Deploys 2 clusters with Portworx, sets up and configures a ClusterPair

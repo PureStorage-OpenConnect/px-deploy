@@ -20,5 +20,6 @@ spec:
       startApplications: false
       includeVolumes: false
       namespaces:
+      - pxbbq
       - petclinic
   schedulePolicyName: appschedule
