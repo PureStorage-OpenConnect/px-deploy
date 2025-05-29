@@ -137,12 +137,15 @@ kubectl apply -f /tmp/px.yml
 
 wait
 
+# Install pxc and pxctl.sh, can remove pxc at a later date
 curl -sL https://github.com/portworx/pxc/releases/download/v0.35.0/pxc-v0.35.0.linux.amd64.tar.gz | tar xvz -C /tmp
 curl -so /usr/local/bin/pxc-pxctl https://raw.githubusercontent.com/portworx/pxc/master/component/pxctl/pxc-pxctl
 mv /tmp/pxc/kubectl-pxc /usr/bin
 chmod +x /usr/local/bin/pxc-pxctl
 echo "alias pxctl='kubectl pxc pxctl'" >>/root/.bashrc
 kubectl-pxc config cluster set --portworx-service-namespace=portworx
+cp /assets/pxctl.sh /usr/local/bin/pxctl2
+chmod 755 /usr/local/bin/pxctl2
 
 # Wait for cluster readiness
 while ! kubectl get stc -A -n portworx | grep -q 'Running\|Online'; do
