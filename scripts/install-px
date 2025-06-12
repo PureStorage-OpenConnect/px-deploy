@@ -13,8 +13,8 @@
 
 kubectl create namespace portworx
 if [ $cloud = vsphere ]; then
-  VSPHERE_USER=$(printf $vsphere_user | base64)
-  VSPHERE_PASSWORD=$(printf $vsphere_password | base64)
+  VSPHERE_USER=$(base64 <<<$vsphere_user)
+  VSPHERE_PASSWORD=$(base64 <<<$vsphere_password)
   kubectl apply -f - <<EOF
 apiVersion: v1
 kind: Secret
