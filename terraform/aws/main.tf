@@ -87,7 +87,7 @@ resource "local_file" "ssh_public_key" {
 }
 
 resource "aws_key_pair" "deploy_key" {
-	key_name = format("px-deploy.%s",var.config_name)
+	key_name = format("pxd-%s-%s",var.config_name,var.config_uuid)
 	public_key = tls_private_key.ssh.public_key_openssh
 }
 
@@ -224,7 +224,7 @@ resource "aws_security_group" "sg_px-deploy" {
 }
 
 resource "aws_iam_policy" "px-policy" {
-  name = format("px-policy-%s-%s",var.name_prefix,var.config_name)
+  name = format("pxd-%s-%s",var.config_name,var.config_uuid)
   description = "portworx node policy"
 
   policy = jsonencode({
@@ -254,7 +254,7 @@ resource "aws_iam_policy" "px-policy" {
 }
 
 resource "aws_iam_role" "node-iam-role" {
-  name = format("%s-%s-nodes",var.name_prefix,var.config_name)
+  name = format("pxd-%s-%s-node",var.config_name,var.config_uuid)
 
   assume_role_policy = jsonencode({
     Statement = [{

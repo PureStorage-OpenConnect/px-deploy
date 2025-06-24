@@ -115,6 +115,7 @@ type Config struct {
 	Vsphere__Userdata        string `yaml:"vsphere__userdata,omitempty"`
 	Ssh_Pub_Key              string
 	Run_Predelete            bool
+	Uuid                     string
 }
 
 type Config_Cluster struct {
@@ -737,6 +738,8 @@ func prepare_deployment(config *Config, flags *Config, createName string, create
 		return string(validate_error)
 	}
 
+	config.Uuid = uuid.New().String()
+
 	if createName != "" {
 		if !regexp.MustCompile(`^[a-z0-9_\-\.]+$`).MatchString(createName) {
 			return fmt.Sprintf("Invalid deployment name %s\n", createName)
@@ -745,7 +748,7 @@ func prepare_deployment(config *Config, flags *Config, createName string, create
 			return fmt.Sprintf("%sDeployment '%s' already exists%s\n Please delete it by running 'px-deploy destroy -n %s' \n If this fails, remove cloud resources manually and run 'px-deploy destroy --clear -n %s'\n", Red, createName, Reset, createName, createName)
 		}
 	} else {
-		createName = uuid.New().String()
+		createName = config.Uuid
 	}
 	config.Name = createName
 

@@ -14,6 +14,11 @@ variable "config_name" {
 	type 		= string
 }
 
+variable "config_uuid" {
+	description = "px-deploy deployment uuid"
+	type 		= string
+}
+
 variable "clusters" {
 	description 	= "number of clusters to create"
 	type			= number

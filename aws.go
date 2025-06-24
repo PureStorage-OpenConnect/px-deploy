@@ -59,6 +59,7 @@ func aws_create_variables(config *Config) []string {
 		tf_var_tags = append(tf_var_tags, "  px-deploy_username = \"unknown\"")
 	}
 	tf_var_tags = append(tf_var_tags, "  px-deploy_name = \""+config.Name+"\"")
+	tf_var_tags = append(tf_var_tags, "  px-deploy_uuid = \""+config.Uuid+"\"")
 	tf_var_tags = append(tf_var_tags, "}\n")
 
 	switch config.Platform {
@@ -88,6 +89,7 @@ func aws_create_variables(config *Config) []string {
 
 	// build terraform variable file
 	tf_variables = append(tf_variables, "config_name = \""+config.Name+"\"")
+	tf_variables = append(tf_variables, "config_uuid = \""+config.Uuid+"\"")
 	tf_variables = append(tf_variables, "clusters = "+config.Clusters)
 	tf_variables = append(tf_variables, "aws_region = \""+config.Aws_Region+"\"")
 	tf_variables = append(tf_variables, "aws_access_key_id = \""+config.Aws_Access_Key_Id+"\"")
