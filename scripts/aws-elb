@@ -1,4 +1,4 @@
-if [ $cloud = aws ] && [ $platform != eks ]; then
+if [ $cloud = aws ] && [ $platform != eks ] && [ $platform != ocp4 ]; then
     region=$(curl -s http://169.254.169.254/latest/meta-data/placement/availability-zone | sed 's/.$//')
     aws configure set default.region $region
     instance_id=$(curl -s http://169.254.169.254/latest/meta-data/instance-id)
