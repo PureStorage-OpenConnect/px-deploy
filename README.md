@@ -47,6 +47,8 @@ It may take 5-10 minutes to complete, longer with a slow Internet connection.
 
 Update your `.bash_profile` or `.zshrc` as directed. Source them or login again. Validate it is complete with `px-deploy -h`.
 
+If on a Mac, install the cron job as directed. This will enable notifications twice a day advising of the ongoing costs of running deployments.
+
 Review the various cloud settings in `~/.px-deploy/defaults.yml`.
 
 5. Configure Cloud specific settings

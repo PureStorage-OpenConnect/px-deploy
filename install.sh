@@ -57,10 +57,12 @@ echo -e ${WHITE}'px-deploy() { [ "$DEFAULTS" ] && params="-v $DEFAULTS:/px-deplo
 echo -e ${YELLOW}If you are using bash, append this to your .bash_profile:
 echo -e ${WHITE}'px-deploy() { [ "$DEFAULTS" ] && params="-v $DEFAULTS:/px-deploy/.px-deploy/defaults.yml" ; docker run --network host -it -e PXDUSER=$USER --rm --name px-deploy.$$ $params -v $HOME/.px-deploy:/px-deploy/.px-deploy px-deploy /root/go/bin/px-deploy "$@" ; }'
 echo
-echo -e ${GREEN}When your px-deploy function is set, create a deployment with:
-echo -e "${WHITE}px-deploy create --name myDeployment --template px$NC"
-echo
-echo -e ${YELLOW}If using bash completion, execute:
-echo -e ${WHITE}'px-deploy completion | tr -d "\\r" >$HOME/.px-deploy/bash-completion'
-echo -e ${YELLOW}and append this to your .bash_profile:
-echo -e "${WHITE}[ -n \$BASH_COMPLETION ] && . \$HOME/.px-deploy/bash-completion"
+#echo -e ${YELLOW}If using bash completion, execute:
+#echo -e ${WHITE}'px-deploy completion | tr -d "\\r" >$HOME/.px-deploy/bash-completion'
+#echo -e ${YELLOW}and append this to your .bash_profile:
+#echo -e "${WHITE}[ -n \$BASH_COMPLETION ] && . \$HOME/.px-deploy/bash-completion"
+if echo $OSTYPE | grep -q darwin; then
+  cp px-deploy_mac.cron px-deploy_mac_cron.sh $HOME/.px-deploy
+  echo -e ${YELLOW}To enable cost reminders twice a day, execute:
+  echo -e ${WHITE}crontab \$HOME/.px-deploy/px-deploy_mac.cron$NC
+fi
