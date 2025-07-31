@@ -62,7 +62,7 @@ echo
 #echo -e ${YELLOW}and append this to your .bash_profile:
 #echo -e "${WHITE}[ -n \$BASH_COMPLETION ] && . \$HOME/.px-deploy/bash-completion"
 if echo $OSTYPE | grep -q darwin; then
-  cp px-deploy_mac.cron px-deploy_mac_cron.sh $HOME/.px-deploy
+  cp px-deploy.cron px-deploy_cron.sh $HOME/.px-deploy
   echo -e ${YELLOW}To enable cost reminders twice a day, execute:
-  echo -e ${WHITE}crontab \$HOME/.px-deploy/px-deploy_mac.cron$NC
+  echo -e ${WHITE}crontab \$HOME/.px-deploy/px-deploy.cron$NC
 fi
