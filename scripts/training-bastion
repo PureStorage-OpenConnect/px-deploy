@@ -1,9 +1,6 @@
-# Install etcd for DR
-sh /assets/training/Disaster_Recovery/etcd.sh
-
 # Configure user directories
-mkdir /etc/skel/.kube
 mv /assets/training /etc/skel
+mkdir /etc/skel/.kube /etc/skel/training/03-Installation
 cat <<EOF >>/etc/skel/.bashrc
 alias k=kubectl
 complete -F __start_kubectl k
