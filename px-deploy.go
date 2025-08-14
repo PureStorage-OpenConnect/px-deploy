@@ -573,6 +573,10 @@ func validate_config(config *Config) []string {
 			}
 		}
 
+		if (config.Ocp4_Credentials_Mode != "Mint") && (config.Ocp4_Credentials_Mode != "Passthrough") {
+			config.Ocp4_Credentials_Mode = "Mint"
+		}
+
 		if !regexp.MustCompile(`^[a-zA-Z0-9_\-]+$`).MatchString(config.Aws_Region) {
 			errormsg = append(errormsg, "Invalid region '"+config.Aws_Region+"'")
 		}
@@ -728,8 +732,8 @@ func validate_config(config *Config) []string {
 	}
 
 	if config.Platform == "ocp4" {
-		checkvar := []string{"ocp4_domain", "ocp4_pull_secret", "ocp4_credentials_mode"}
-		emptyVars := isEmpty(config.Ocp4_Domain, config.Ocp4_Pull_Secret, config.Ocp4_Credentials_Mode)
+		checkvar := []string{"ocp4_domain", "ocp4_pull_secret"}
+		emptyVars := isEmpty(config.Ocp4_Domain, config.Ocp4_Pull_Secret)
 		if len(emptyVars) > 0 {
 			for _, i := range emptyVars {
 				errormsg = append(errormsg, fmt.Sprintf("please set \"%s\" in defaults.yml", checkvar[i]))

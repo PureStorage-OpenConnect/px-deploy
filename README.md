@@ -199,6 +199,7 @@ The `defaults.yml` file sets a number of deployment variables:
  * `vsphere_repo` - repository to pull vsphere template
  * `ocp4_domain` - domain that has been delegated to route53
  * `ocp4_version` - eg `4.3.0`
+ * `ocp4_credentials_mode` - (Optional) set OCP4 CCO credentialsMode. Defaults to "Mint", you may change to "Passthrough"
  * `ocp4_pull_secret` - the pull secret `'{"auths" ... }'`
 
 There are two ways to override these variables. The first is to specify a template with the `--template=...` parameter. For example:
