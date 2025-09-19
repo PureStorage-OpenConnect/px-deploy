@@ -2,12 +2,26 @@
 
 global ttys
 
-probe kernel.function("pty_write") {
+probe kernel.function("pty_open") {
   tty = kernel_string($tty->name)
-  if (tty =~ "^pts" && !ttys[tty] && uid() > 1000 && uid() < 1200) {
-    ttys[tty]=1
-    uid = sprintf("%d", uid() - 1000)
-    system("screen -dmS training".uid.".".tty.".snoop bash -c '(trap \"\" INT; snoop ".tty.")'")
+  if (tty =~ "^pts" && uid() > 1000 && uid() < 1200 && execname() == "sshd") {
+    n = substr(tty, 3, 2)
+    ttys[n]++
+    if (ttys[n] == 2) {
+      uid = sprintf("%d", uid() - 1000)
+      system("screen -dmS training.".tty.".training".uid.".snoop bash -c 'trap \"\" INT; while :; do snoop ".tty."; done'")
+    }
+  }
+}
+
+probe kernel.function("pty_close") {
+  tty = kernel_string($tty->name)
+  if (tty =~ "^ptm" && execname() == "sshd") {
+    n = substr(tty, 3, 2)
+    ttys[n]--
+    if (!ttys[n]) {
+      system("screen -S training.pts".n.". -X quit")
+    }
   }
 }
 

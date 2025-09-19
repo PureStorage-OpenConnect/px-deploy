@@ -1,11 +1,1 @@
-#!/usr/bin/env bash
-
-tmux new-session -d -s snoop -n main bash -c "watch "who | grep training""
-
-for i in $(screen -ls | awk '/training.*snoop/{print$1}' | sort -t . -k 2,2 -k 3,3); do
-  tmux split-window -t "snoop:main" -h "screen -x $i"
-  tmux select-pane -T $i
-  tmux select-layout -t "snoop:main" tiled
-done
-
 tmux attach -t snoop

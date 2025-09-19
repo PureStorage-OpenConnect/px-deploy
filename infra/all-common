@@ -96,7 +96,7 @@ systemctl disable firewalld 2>/dev/null
 while ! yum update -y glib2; do
   sleep 1
 done
-while ! dnf install -y at bash-completion nfs-utils chrony unzip ca-certificates netcat net-tools vim-enhanced nano git; do
+while ! dnf install -y at bash-completion nfs-utils chrony unzip ca-certificates netcat net-tools vim-enhanced nano git tmux screen; do
   sleep 1
 done
 git config --global color.ui auto true

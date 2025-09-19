@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+
+tmux new-session -d -s snoop -n main bash -c "trap '' INT; watch screen -ls"
+
+while :; do
+  sleep 1
+  oldscreens=$screens
+  screens=$(screen -ls | awk '/training.*snoop/{print$1}' | sort -t . -k 2,2 -k 3,3)
+  [ "$screens" = "$oldscreens" ] && continue
+  tmux select-pane -t snoop:0.0
+  tmux kill-pane -a
+  for i in $screens; do
+    tmux split-window -t "snoop:main" -h "screen -x $i"
+    tmux select-pane -T $i
+    tmux select-layout -t "snoop:main" tiled
+  done
+done

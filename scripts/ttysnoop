@@ -3,7 +3,7 @@ rpm -ih https://dl.rockylinux.org/vault/rocky/9.5/devel/x86_64/os/Packages/k/ker
 rpm -ih https://dl.rockylinux.org/vault/rocky/9.5/devel/x86_64/debug/tree/Packages/k/kernel-debuginfo-5.14.0-503.14.1.el9_5.x86_64.rpm https://dl.rockylinux.org/vault/rocky/9.5/devel/x86_64/os/Packages/k/kernel-debuginfo-common-x86_64-5.14.0-503.14.1.el9_5.x86_64.rpm https://dl.rockylinux.org/vault/rocky/9.5/devel/x86_64/os/Packages/k/kernel-headers-5.14.0-503.14.1.el9_5.x86_64.rpm
 dnf install -y systemtap
 
-install -m 700 /assets/ttysnoop/snoop /assets/ttysnoop/snoopall /assets/ttysnoop/_snoop /usr/sbin
+install -m 700 /assets/ttysnoop/snoop /assets/ttysnoop/snoopall /assets/ttysnoop/_snoop /assets/ttysnoop/_snoopall /usr/sbin
 
 snoop test &
 while [ ! -d /proc/systemtap ]; do
@@ -12,5 +12,9 @@ while [ ! -d /proc/systemtap ]; do
 done
 kill %1
 
-echo "@reboot nohup /usr/sbin/_snoop &" | crontab -
+cat <<EOF | crontab -
+@reboot nohup /usr/sbin/_snoop &
+@reboot nohup /usr/sbin/_snoopall &
+EOF
 nohup /usr/sbin/_snoop &
+nohup /usr/sbin/_snoopall &
