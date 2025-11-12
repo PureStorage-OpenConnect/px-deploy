@@ -59,9 +59,9 @@ cat <<EOF >./tmp/vsphere-rocky.json
     "vsphere-folder": "$vsphere_template_dir",
     "vm-name": "pxdeploy-template-build",
     "pxd-templateid": "$PXDTEMPLATEID",
-    "vm-cpu-num": "4",
-    "vm-mem-size": "8192",
-    "vm-disk-size": "52000",
+    "vm-cpu-num": "$vsphere_cpu",
+    "vm-mem-size": "$vsphere_memory",
+    "vm-disk-size": "$vsphere_disks",
     "iso_url": "https://dl.rockylinux.org/vault/rocky/9.5/isos/x86_64/Rocky-9.5-x86_64-minimal.iso",
     "kickstart_file": "/vsphere-ks.cfg"
   },
