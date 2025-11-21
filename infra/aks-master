@@ -1,3 +1,7 @@
+cat <<EOF >>/etc/bashrc
+PS1='[\u@bastion-'$cluster' \W]\$ '
+EOF
+
 while ! rpm --import https://packages.microsoft.com/keys/microsoft.asc; do
   sleep 2
 done

@@ -1,17 +1,11 @@
+cat <<EOF >>/etc/bashrc
+PS1='[\u@bastion-'$cluster' \W]\$ '
+EOF
+
 GKE_CLUSTER_NAME=px-deploy-$name-$cluster
 
 dnf install -y docker google-cloud-cli-gke-gcloud-auth-plugin
 systemctl enable --now docker
-
-#curl -L https://github.com/containerd/containerd/releases/download/v1.6.15/containerd-1.6.15-linux-amd64.tar.gz | tar Cxzvf /usr/local -
-#curl -o /etc/systemd/system/containerd.service https://raw.githubusercontent.com/containerd/containerd/main/containerd.service
-#mkdir /etc/containerd
-#containerd config default | sed 's/SystemdCgroup = false/SystemdCgroup = true/' >/etc/containerd/config.toml
-#curl -Lo /usr/sbin/runc https://github.com/opencontainers/runc/releases/download/v1.1.4/runc.amd64
-#chmod 755 /usr/sbin/runc
-#systemctl daemon-reload
-#systemctl enable --now containerd
-#systemctl enable --now podman
 
 curl -sL -o /usr/bin/kubectl "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
 chmod 755 /usr/bin/kubectl

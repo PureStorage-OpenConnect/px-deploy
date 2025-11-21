@@ -1,3 +1,7 @@
+cat <<EOF >>/etc/bashrc
+PS1='[\u@bastion-'$cluster' \W]\$ '
+EOF
+
 repo=$(echo $rancher_k8s_version | cut -f 1,2 -d .)
 cat <<EOF >/etc/yum.repos.d/kubernetes.repo
 [kubernetes]
