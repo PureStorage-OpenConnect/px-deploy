@@ -1,16 +1,14 @@
 # Configure user directories
 mv /assets/training-backup /etc/skel/training
 mkdir /etc/skel/.kube
+ip=$(curl -s https://ipinfo.io/ip)
+port=$(kubectl get svc -n central px-backup-ui -o jsonpath='{.spec.ports[0].nodePort}')
 cat <<EOF >>/etc/skel/.bashrc
 alias k=kubectl
 complete -F __start_kubectl k
+tty &>/dev/null && echo ========================================== && echo "PX-Backup UI: http://$ip:$port" && printf "MinIO endpoint: 192.168.1%.2d.90:30221\n" \$(id -nu | sed s/training//) && echo ==========================================
 PS1='\e[0;33m[\u@px-training \W]\$ \e[m'
 EOF
-
-Create motd
-ip=$(curl -s https://ipinfo.io/ip)
-port=$(kubectl get svc -n central px-backup-ui -o jsonpath='{.spec.ports[0].nodePort}')
-echo "PX-Backup UI: http://$ip:$port" >/etc/motd.d/training-backup
 
 # Create training users
 kubectl exec -it -n central pxcentral-keycloak-0 -- /opt/keycloak/bin/kcadm.sh config credentials --user admin --password admin --server http://localhost:8080/auth --realm master
