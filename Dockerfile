@@ -9,8 +9,8 @@ RUN wget -P / https://releases.hashicorp.com/terraform/1.9.8/terraform_1.9.8_lin
 RUN wget -P / https://releases.hashicorp.com/terraform/1.9.8/terraform_1.9.8_linux_arm64.zip
 RUN unzip /terraform_1.9.8_linux_amd64.zip -d /linux/amd64
 RUN unzip /terraform_1.9.8_linux_arm64.zip -d /linux/arm64
-RUN wget -P / https://github.com/vmware/govmomi/releases/download/v0.37.1/govc_Linux_x86_64.tar.gz
-RUN wget -P / https://github.com/vmware/govmomi/releases/download/v0.37.1/govc_Linux_arm64.tar.gz
+RUN wget -P / https://github.com/vmware/govmomi/releases/download/v0.52.0/govc_Linux_x86_64.tar.gz
+RUN wget -P / https://github.com/vmware/govmomi/releases/download/v0.52.0/govc_Linux_arm64.tar.gz
 RUN tar -xzf /govc_Linux_x86_64.tar.gz -C /linux/amd64
 RUN tar -xzf /govc_Linux_arm64.tar.gz -C /linux/arm64
 RUN mkdir -p /root/go/src/px-deploy

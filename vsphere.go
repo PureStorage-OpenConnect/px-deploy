@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/exec"
 	"path"
+	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
@@ -722,6 +723,15 @@ func vsphere_init() {
 	vsphere_template_dir := path.Dir(config.Vsphere_Template)
 	vsphere_template_base := path.Base(config.Vsphere_Template)
 
+	path_json_opts := filepath.Join(os.TempDir(), "options.json")
+	json_opts := []byte(fmt.Sprintf("{\"NetworkMapping\":[{\"Name\": \"VM Network (Standard)\",\"Network\": \"%s\"}]}", config.Vsphere_Network))
+
+	err := os.WriteFile(path_json_opts, json_opts, 0644)
+	if err != nil {
+		fmt.Println(Red + "ERROR writing import options file" + Reset)
+		return
+	}
+
 	govc_opts = append(govc_opts, fmt.Sprintf("GOVC_URL=%s", config.Vsphere_Host))
 	govc_opts = append(govc_opts, fmt.Sprintf("GOVC_INSECURE=1"))
 	govc_opts = append(govc_opts, fmt.Sprintf("GOVC_RESOURCE_POOL=%s", config.Vsphere_Resource_Pool))
@@ -734,12 +744,12 @@ func vsphere_init() {
 		govc_opts = append(govc_opts, fmt.Sprintf("GOVC_FOLDER=%s", vsphere_template_dir))
 	}
 	fmt.Printf("Importing new template to VM %s_tmp\n  (source %stemplate.ova)\n", config.Vsphere_Template, config.Vsphere_Repo)
-	cmd := exec.Command("govc", "import.ova", "-name="+vsphere_template_base+"_tmp", config.Vsphere_Repo+"template.ova")
+	cmd := exec.Command("govc", "import.ova", "-options="+path_json_opts, "-name="+vsphere_template_base+"_tmp", config.Vsphere_Repo+"template.ova")
 	cmd.Env = os.Environ()
 	cmd.Env = append(cmd.Env, govc_opts...)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
-	err := cmd.Run()
+	err = cmd.Run()
 	if err != nil {
 		fmt.Println(Red + "ERROR importing px-deploy base template" + Reset)
 		return
