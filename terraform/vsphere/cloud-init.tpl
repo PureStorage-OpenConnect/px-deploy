@@ -14,6 +14,12 @@ write_files:
     content: ${tpl_priv_key}
     path: /tmp/id_rsa
     permissions: '0600'
+  - content: |
+     [default]
+     aws_access_key_id = ${tpl_aws_access_key_id}
+     aws_secret_access_key = ${tpl_aws_secret_access_key}
+    path: /tmp/credentials
+    permissions: '0600'
   
 runcmd:
 - while [ ! -f "/tmp/env.sh" ]; do sleep 5; done

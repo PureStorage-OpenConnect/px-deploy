@@ -165,6 +165,8 @@ resource "local_file" "cloud-init" {
   {
 	  tpl_priv_key = base64encode(tls_private_key.ssh.private_key_openssh),
     tpl_pub_key = tls_private_key.ssh.public_key_openssh,
+    tpl_aws_access_key_id = var.aws_access_key_id
+		tpl_aws_secret_access_key = var.aws_secret_access_key
 	  tpl_name = each.value.instance_name,
 	  tpl_cluster = each.value.cluster
 	})
