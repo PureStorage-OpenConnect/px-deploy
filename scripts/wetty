@@ -1,3 +1,108 @@
 mkdir /etc/wetty
 rm -f /etc/securetty
-kubectl apply -f /assets/wetty.yaml
+sed -i '/master-1/s/$/ px-training/' /etc/hosts
+
+echo "kubectl delete svc -n wetty wetty" >/px-deploy/script-delete/delete-service
+
+kubectl apply -f - <<EOF
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: wetty
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ssh-config
+  namespace: wetty
+data:
+  ssh-config: |
+    LogLevel=ERROR
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: wetty-tls
+  namespace: wetty
+type: kubernetes.io/tls
+data:
+  tls.crt: $training_cert
+  tls.key: $training_key
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: wetty
+  namespace: wetty
+  labels:
+    app: wetty
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: wetty
+  template:
+    metadata:
+      labels:
+        app: wetty
+    spec:
+      nodeSelector:
+        node-role.kubernetes.io/control-plane: ""
+      tolerations:
+      - key: node-role.kubernetes.io/control-plane
+        operator: Exists
+        effect: NoSchedule
+      - key: node-role.kubernetes.io/master
+        operator: Exists
+        effect: NoSchedule
+      hostNetwork: true
+      containers:
+      - name: wetty
+        image: wettyoss/wetty:latest
+        args:
+        - "--port"
+        - "3000"
+        - "--base"
+        - "/"
+        - "--ssh-host"
+        - "px-training"
+        - "--force-ssh"
+        - "--ssl-key"
+        - "/etc/tls/tls.key"
+        - "--ssl-cert"
+        - "/etc/tls/tls.crt"
+        ports:
+        - containerPort: 3000
+        securityContext:
+          allowPrivilegeEscalation: false
+        volumeMounts:
+        - name: tls
+          mountPath: /etc/tls
+        - name: ssh-config
+          mountPath: /etc/ssh/ssh_config
+          subPath: ssh-config
+      volumes:
+      - name: tls
+        secret:
+          secretName: wetty-tls
+      - name: ssh-config
+        configMap:
+          name: ssh-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: wetty
+  namespace: wetty
+  annotations:
+    service.beta.kubernetes.io/aws-load-balancer-type: "nlb"
+    external-dns.alpha.kubernetes.io/hostname: $name.training.$ocp4_domain
+spec:
+  type: LoadBalancer
+  selector:
+    app: wetty
+  ports:
+  - name: https
+    port: 443
+    targetPort: 3000
+EOF
