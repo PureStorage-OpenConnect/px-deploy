@@ -166,7 +166,6 @@ The `defaults.yml` file sets a number of deployment variables:
  * `k8s_version` - the version of Kubernetes to deploy
  * `tags` - a list of tags to be applied to each node. This is a comma-separate list of name=value pairs, for example: `"Owner=Bob,Purpose=Demo"`
  * `stop_after` - stop the intances after this many hours
- * `post_script` - script to run on each master after deployment, output will go to stdout
  * `nodes` - the number of worker nodes on each cluster
  * `lock` - prevents deployment from being deleted by `px-deploy destroy ...`. use `px-deploy unlock -n ...` to unlock 
  * `platform` - can be set to either k8s, none, ocp4, eks or gke
@@ -202,25 +201,7 @@ The `defaults.yml` file sets a number of deployment variables:
  * `ocp4_credentials_mode` - (Optional) set OCP4 CCO credentialsMode. Defaults to "Mint", you may change to "Passthrough"
  * `ocp4_pull_secret` - the pull secret `'{"auths" ... }'`
 
-There are two ways to override these variables. The first is to specify a template with the `--template=...` parameter. For example:
-```
-$ cat templates/px-fio-example.yml
-description: An example fio benchmark on a gp2 disk and a Portworx volume on a gp2 disk
-scripts: ["install-px", "px-wait", "px-fio-example"]
-clusters: 1
-nodes: 3
-cloud: aws
-aws_ebs: "gp2:150 gp2:150"
-post_script: cat
-auto_destroy: true
-env:
-  px_suffix: "s=/dev/nvme1n1"
-  cat: "/tmp/output"
-```
-
-More on `scripts` below.
-
-The second way to override the defaults is to specify on the command line. See `px-deploy create -h` for a full list. For example, to deploy petclinic into the `foo` deployment:
+There are two ways to override these variables. The first is to specify a template with the `--template=...` parameter.  The second way to override the defaults is to specify on the command line. See `px-deploy create -h` for a full list. For example, to deploy petclinic into the `foo` deployment:
 ```
 px-deploy create --name=foo --clusters=5 --template=petclinic --nodes=6
 ```
@@ -258,8 +239,6 @@ cluster:
 - id: 2
   scripts: ["script-3", "script-4"]
 ```
-
-`post_script` is a script that will be run on each master node after all of the scripts have completed, and the output will go to stdout. The default is to display the external IP address of master-1, but it could be used to show benchmark outputs, for example.
 
 Last, environment variables can be define in templates or defaults.yml, and these are also available to scripts:
 ```

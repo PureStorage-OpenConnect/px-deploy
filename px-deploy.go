@@ -1763,7 +1763,6 @@ func write_nodescripts(config Config) {
 	var tf_node_scripts []string
 	var tf_master_scripts []string
 	var tf_common_master_script []byte
-	var tf_post_script []byte
 	var tf_node_script []byte
 	var tf_individual_node_script []byte
 	var tf_master_script []byte
@@ -1893,11 +1892,6 @@ func write_nodescripts(config Config) {
 					}
 				}
 			}
-		}
-
-		// add post_script if defined
-		if tf_post_script != nil {
-			tf_master_script = append(tf_master_script, tf_post_script...)
 		}
 
 		// after running all scripts create file in /var/log/px-deploy/completed
