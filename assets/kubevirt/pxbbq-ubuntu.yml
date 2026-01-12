@@ -31,7 +31,7 @@ spec:
     spec:
       containers:
       - name: pxbbq-web
-        image: quay.io/px-tme/pxbbq:v4.6.1
+        image: quay.io/px-tme/pxbbq:v4.8.3
         env:
         - name: MONGO_INIT_USER
           value: "porxie" #Mongo User with permissions to create additional databases and users. Typically "porxie" or "pds"
