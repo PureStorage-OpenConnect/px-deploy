@@ -39,7 +39,7 @@ spec:
     spec:
       containers:
       - name: mongo
-        image: mongo:7.0.9
+        image: docker.io/mongo:7.0.9
         #image: quay.io/mongodb/mongodb-community-server:7.0.9-ubi9
         env:
         - name: MONGO_INITDB_ROOT_USERNAME
@@ -119,7 +119,7 @@ spec:
     spec:                        
       containers:
       - name: pxbbq-web
-        image: quay.io/px-tme/pxbbq:v4.6.1
+        image: quay.io/px-tme/pxbbq:v4.8.3
         env:
         - name: MONGO_INIT_USER
           value: "porxie" #Mongo User with permissions to create additional databases and users. Typically "porxie" or "pds"
