@@ -1,55 +1,75 @@
-kind: PersistentVolumeClaim
-apiVersion: v1
+kind: StorageClass
+apiVersion: storage.k8s.io/v1
 metadata:
-  name: px-mongo-pvc
-spec:
-  storageClassName: px-csi-db
-  accessModes:
-    - ReadWriteOnce
-  resources:
-    requests:
-      storage: 3Gi
+    name: portworx-xfs-r3
+provisioner: pxd.portworx.com
+parameters:
+  fs: "xfs"
+  repl: "3"
+  io_profile: "db_remote"
+  priority_io: "high"
 ---
 apiVersion: apps/v1
-kind: Deployment
+kind: StatefulSet
 metadata:
-  name: mongodb
+  name: mongo
+  labels:
+    app.kubernetes.io/name: mongo
 spec:
+  serviceName: "mongo"
   selector:
     matchLabels:
-      app: mongodb
-  strategy:
-    rollingUpdate:
-      maxSurge: 1
-      maxUnavailable: 1
-    type: RollingUpdate
+      app.kubernetes.io/name: mongo
   replicas: 1
   template:
     metadata:
       labels:
-        app: mongodb
+        app.kubernetes.io/name: mongo
     spec:
-      schedulerName: stork
       containers:
-      - name: mongodb
-        image: mongo:4
-        imagePullPolicy: "IfNotPresent"
+      - name: mongo
+        image: docker.io/mongo:7.0.28
+        #image: quay.io/mongodb/mongodb-community-server:7.0.28-ubi9
         env:
-        - name: MONGODB_ROOT_PASSWORD
-          value: password
-        - name: MONGODB_USERNAME
-          value: admin
-        - name: MONGODB_PASSWORD
-          value: password
-        - name: MONGODB_DATABASE
-          value: demo
+        - name: MONGO_INITDB_ROOT_USERNAME
+          value: porxie
+        - name: MONGO_INITDB_ROOT_PASSWORD
+          value: "porxie"
+        args:
+        - "--bind_ip"
+        - "0.0.0.0"
+        resources:
+          requests:
+            cpu: 100m
+            memory: 100Mi
         ports:
-        - name: mongodb
-          containerPort: 27017
+        - containerPort: 27017
         volumeMounts:
-        - name: data
+        - name: mongo-data-dir
           mountPath: /data/db
-      volumes:
-      - name: data
-        persistentVolumeClaim:
-          claimName: px-mongo-pvc
+        livenessProbe:
+          exec:
+            command: ["mongosh", "--eval", "db.adminCommand({ping: 1})"]
+          initialDelaySeconds: 30  # Give MongoDB time to start before the first check
+          timeoutSeconds: 5
+          periodSeconds: 10  # How often to perform the probe
+          failureThreshold: 3 
+      tolerations:
+      - key: "node.kubernetes.io/unreachable"
+        operator: "Exists"
+        effect: "NoExecute"
+        tolerationSeconds: 10
+      - key: "node.kubernetes.io/not-ready"
+        operator: "Exists"
+        effect: "NoExecute"
+        tolerationSeconds: 10
+      terminationGracePeriodSeconds: 5
+  volumeClaimTemplates:
+  - metadata:
+      name: mongo-data-dir
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      resources:
+        requests:
+          storage: 1Gi
+      storageClassName: portworx-xfs-r3
