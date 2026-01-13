@@ -39,8 +39,8 @@ spec:
     spec:
       containers:
       - name: mongo
-        image: docker.io/mongo:7.0.9
-        #image: quay.io/mongodb/mongodb-community-server:7.0.9-ubi9
+        image: docker.io/mongo:7.0.28
+        #image: quay.io/mongodb/mongodb-community-server:7.0.28-ubi9
         env:
         - name: MONGO_INITDB_ROOT_USERNAME
           value: porxie
