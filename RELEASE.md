@@ -1,3 +1,24 @@
+# 6.6
+##Important
+* px-backup deployments are now using a random admin password shown on `px-deploy connect` login
+
+##Fixes
+* px-deploy vsphere-init now using proper network settings
+* clusterpair (async-dr / migration) now works on vsphere deployments (still need aws credentials & DR_BUCKET)
+
+##Improvements
+* PX Ent Version 3.5.1
+* PX-Backup 2.10.1
+* OCP 4.19.21
+* update pxbbq version
+* include px cli tool
+* clouddrives will now have a deployment uuid label by default, used for more robust destroy function
+* implement aws-load-balancer-controller on aws for proper service type LB creation
+* new training-backup template
+* rewrite snoop without stap
+* expose wetty with load balancer and DNS
+* stop/start cluster by number
+
 # 6.5.1
  * integrate missing PR
 

@@ -1,5 +1,5 @@
 NAMESPACE=central
-VERSION=2.10.0
+VERSION=2.10.1
 
 kubectl apply -f - <<EOF
 apiVersion: v1

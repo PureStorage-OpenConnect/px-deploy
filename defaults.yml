@@ -4,7 +4,7 @@ clusters: 1
 nodes: 3
 #ssh_pub_key: "ssh-rsa XXXXXXXXXXXXXXXXXXXXXX user@example"
 k8s_version: 1.33.5
-px_version: 3.5.0
+px_version: 3.5.1
 stop_after: 6
 quiet: false
 tags: "project=pxdeploy"
@@ -56,7 +56,7 @@ vsphere_repo: "https://px-deploy.s3.eu-west-1.amazonaws.com/templates/"
 #vsphere_folder: ""
 
 ocp4_domain: ""
-ocp4_version: 4.19.17
+ocp4_version: 4.19.21
 ocp4_credentials_mode: Mint
 ocp4_pull_secret: ""
 
