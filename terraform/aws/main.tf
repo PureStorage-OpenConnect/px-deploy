@@ -285,27 +285,44 @@ resource "aws_iam_policy" "px-policy" {
 
   policy = jsonencode({
     Version = "2012-10-17"
-    Statement = [{
-            Sid = "" 
-            Effect = "Allow"
-            Action = [
-                "ec2:AttachVolume",
-                "ec2:ModifyVolume",
-                "ec2:DetachVolume",
-                "ec2:CreateTags",
-                "ec2:CreateVolume",
-                "ec2:DeleteTags",
-                "ec2:DeleteVolume",
-                "ec2:DescribeTags",
-                "ec2:DescribeVolumeAttribute",
-                "ec2:DescribeVolumesModifications",
-                "ec2:DescribeVolumeStatus",
-                "ec2:DescribeVolumes",
-                "ec2:DescribeInstances",
-                "autoscaling:DescribeAutoScalingGroups"
-            ]
-            Resource = "*"
-        }]
+    Statement = [
+      {
+        Sid = "" 
+        Effect = "Allow"
+        Action = [
+          "ec2:AttachVolume",
+          "ec2:ModifyVolume",
+          "ec2:DetachVolume",
+          "ec2:CreateTags",
+          "ec2:CreateVolume",
+          "ec2:DeleteTags",
+          "ec2:DeleteVolume",
+          "ec2:DescribeTags",
+          "ec2:DescribeVolumeAttribute",
+          "ec2:DescribeVolumesModifications",
+          "ec2:DescribeVolumeStatus",
+          "ec2:DescribeVolumes",
+          "ec2:DescribeInstances",
+          "autoscaling:DescribeAutoScalingGroups"
+        ]
+        Resource = "*"
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "route53:ChangeResourceRecordSets"
+        ]
+        Resource = "arn:aws:route53:::hostedzone/*"
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "route53:ListHostedZones",
+          "route53:ListResourceRecordSets"
+        ]
+        Resource = "*"
+      }
+    ]
   })
 }
 
