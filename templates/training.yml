@@ -1,8 +1,9 @@
 description: Deploys training clusters
 scripts: ["training-cluster"]
-px_version: 3.4.0.1
+px_version: 3.5.1
 k8s_version: 1.33.5
 stop_after: 0
+run_predelete: true
 cluster:
   - id: 1
-    scripts: ["etcd", "wetty", "snoop", "training-bastion"]
+    scripts: ["install-awscli", "etcd", "wetty", "snoop", "training-bastion"]
