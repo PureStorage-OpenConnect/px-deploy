@@ -2,8 +2,6 @@ mkdir /etc/wetty
 rm -f /etc/securetty
 sed -i '/master-1/s/$/ px-training/' /etc/hosts
 
-echo "kubectl delete svc -n wetty wetty" >/px-deploy/script-delete/delete-service
-
 kubectl apply -f - <<EOF
 apiVersion: v1
 kind: Namespace
@@ -96,7 +94,7 @@ metadata:
   namespace: wetty
   annotations:
     service.beta.kubernetes.io/aws-load-balancer-type: "nlb"
-    external-dns.alpha.kubernetes.io/hostname: $name.training.$ocp4_domain
+    external-dns.alpha.kubernetes.io/hostname: $name.$ocp4_domain
 spec:
   type: LoadBalancer
   selector:
@@ -106,3 +104,40 @@ spec:
     port: 443
     targetPort: 3000
 EOF
+
+cat <<\EOF >/px-deploy/script-delete/wetty.sh
+#!/usr/bin/bash
+set -e
+
+kubectl delete svc -n wetty wetty
+
+DOMAIN="__DOMAIN__".
+NAME="__NAME__"
+
+ZONE_ID=$(aws route53 list-hosted-zones \
+  | jq -r --arg d "$DOMAIN" '.HostedZones[] | select(.Name==$d) | .Id' \
+  | sed 's#.*/##')
+
+[[ -z "$ZONE_ID" ]] && { echo "Hosted zone not found"; exit 1; }
+
+CHANGES=$(aws route53 list-resource-record-sets --hosted-zone-id "$ZONE_ID" \
+  | jq --arg d "$DOMAIN" --arg n "$NAME" '
+    .ResourceRecordSets
+    | map(select(
+        .Name == ($n + "." + $d)
+        or
+        .Name == ("cname-" + $n + "." + $d)
+      ))
+    | map({Action:"DELETE",ResourceRecordSet:.})
+  ')
+
+COUNT=$(jq length <<<"$CHANGES")
+
+[[ "$COUNT" -eq 0 ]] && exit 0
+
+aws route53 change-resource-record-sets \
+  --hosted-zone-id "$ZONE_ID" \
+  --change-batch "{\"Changes\":$CHANGES}"
+EOF
+sed -i "s/__DOMAIN__/$ocp4_domain/" /px-deploy/script-delete/wetty.sh
+sed -i "s/__NAME__/$name/" /px-deploy/script-delete/wetty.sh
