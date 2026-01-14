@@ -1,4 +1,2 @@
-# install awscli2
-curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "/tmp/awscliv2.zip"
-unzip -o /tmp/awscliv2.zip -d /tmp >/dev/null
-/tmp/aws/install
+dnf install -y awscli
+chmod 700 /usr/bin/aws
