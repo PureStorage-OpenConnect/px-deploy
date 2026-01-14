@@ -14,6 +14,10 @@
 * include px cli tool
 * clouddrives will now have a deployment uuid label by default, used for more robust destroy function
 * implement aws-load-balancer-controller on aws for proper service type LB creation
+* new training-backup template
+* rewrite snoop without stap
+* expose wetty with load balancer and DNS
+* stop/start cluster by number
 
 # 6.5.1
  * integrate missing PR
