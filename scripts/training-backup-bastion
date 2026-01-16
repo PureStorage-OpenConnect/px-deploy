@@ -1,3 +1,5 @@
+ADMIN_PW=$(kubectl get secret pxcentral-keycloak-http -n central -o jsonpath="{.data.password}" | base64 --decode)
+
 # Configure user directories
 mv /assets/training-backup /etc/skel/training
 mkdir /etc/skel/.kube
@@ -6,12 +8,12 @@ port=$(kubectl get svc -n central px-backup-ui -o jsonpath='{.spec.ports[0].node
 cat <<EOF >>/etc/skel/.bashrc
 alias k=kubectl
 complete -F __start_kubectl k
-tty &>/dev/null && echo ========================================== && echo "PX-Backup UI: http://$ip:$port" && printf "MinIO endpoint: 192.168.1%.2d.90:30221\n" \$(id -nu | sed s/training//) && echo ==========================================
+tty &>/dev/null && echo ========================================== && echo "PX-Backup UI: https://backup-ui-$name.$ocp4_domain" && echo "PX-Backup UI: http://$ip:$port" && echo "Admin password: $ADMIN_PW" && printf "MinIO endpoint: 192.168.1%.2d.90:30221\n" \$(id -nu | sed s/training//) && echo ==========================================
 PS1='\e[0;33m[\u@px-training \W]\$ \e[m'
 EOF
 
 # Create training users
-kubectl exec -it -n central pxcentral-keycloak-0 -- /opt/keycloak/bin/kcadm.sh config credentials --user admin --password admin --server http://localhost:8080/auth --realm master
+kubectl exec -it -n central pxcentral-keycloak-0 -- /opt/keycloak/bin/kcadm.sh config credentials --user admin --password $ADMIN_PW --server http://localhost:8080/auth --realm master
 for i in $(seq 1 $clusters); do
   useradd training$i
   passwd --stdin training$i <<<portworx
@@ -29,3 +31,132 @@ for i in $(seq 1 $clusters); do
   cp /root/.kube/config /home/training$i/training/kubeconfig.target
   chown training$i.training$i /home/training$i/.kube/config /home/training$i/training/kubeconfig.target
 done
+
+# Provision nginx to terminate SSL
+kubectl apply -f - <<EOF
+apiVersion: v1
+kind: Secret
+metadata:
+  name: nginx-tls
+  namespace: central
+type: kubernetes.io/tls
+data:
+  tls.crt: $training_cert
+  tls.key: $training_key
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nginx-config
+  namespace: central
+data:
+  default.conf: |
+    server {
+      listen 443 ssl;
+
+      ssl_certificate     /etc/nginx/tls/tls.crt;
+      ssl_certificate_key /etc/nginx/tls/tls.key;
+
+      ssl_protocols TLSv1.2 TLSv1.3;
+      ssl_prefer_server_ciphers on;
+
+      location / {
+        proxy_pass http://px-backup-ui:80;
+        proxy_set_header Host \$host;
+        proxy_set_header X-Forwarded-For \$remote_addr;
+        proxy_set_header X-Forwarded-Proto https;
+        proxy_http_version 1.1;
+        proxy_set_header Connection "";
+      }
+    }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx
+  namespace: central
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: nginx
+  template:
+    metadata:
+      labels:
+        app: nginx
+    spec:
+      containers:
+        - name: nginx
+          image: nginx:1.25
+          ports:
+            - containerPort: 443
+          volumeMounts:
+            - name: tls
+              mountPath: /etc/nginx/tls
+              readOnly: true
+            - name: config
+              mountPath: /etc/nginx/conf.d
+      volumes:
+        - name: tls
+          secret:
+            secretName: nginx-tls
+        - name: config
+          configMap:
+            name: nginx-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: nginx
+  namespace: central
+  annotations:
+    service.beta.kubernetes.io/aws-load-balancer-type: nlb
+    service.beta.kubernetes.io/aws-load-balancer-scheme: internet-facing
+    external-dns.alpha.kubernetes.io/hostname: backup-ui-$name.$ocp4_domain
+spec:
+  type: LoadBalancer
+  ports:
+    - port: 443
+      targetPort: 443
+      protocol: TCP
+  selector:
+    app: nginx
+EOF
+
+# Populate predelete script
+cat <<\EOF >/px-deploy/script-delete/training-backup-bastion.sh
+#!/usr/bin/bash
+set -e
+
+kubectl delete svc -n central nginx
+
+DOMAIN="__DOMAIN__".
+NAME="__NAME__"
+
+ZONE_ID=$(aws route53 list-hosted-zones \
+  | jq -r --arg d "$DOMAIN" '.HostedZones[] | select(.Name==$d) | .Id' \
+  | sed 's#.*/##')
+
+[[ -z "$ZONE_ID" ]] && { echo "Hosted zone not found"; exit 1; }
+
+CHANGES=$(aws route53 list-resource-record-sets --hosted-zone-id "$ZONE_ID" \
+  | jq --arg d "$DOMAIN" --arg n "$NAME" '
+    .ResourceRecordSets
+    | map(select(
+        .Name == ($n + "." + $d)
+        or
+        .Name == ("cname-" + $n + "." + $d)
+      ))
+    | map({Action:"DELETE",ResourceRecordSet:.})
+  ')
+
+COUNT=$(jq length <<<"$CHANGES")
+
+[[ "$COUNT" -eq 0 ]] && exit 0
+
+aws route53 change-resource-record-sets \
+  --hosted-zone-id "$ZONE_ID" \
+  --change-batch "{\"Changes\":$CHANGES}"
+EOF
+sed -i "s/__DOMAIN__/$ocp4_domain/" /px-deploy/script-delete/training-backup-bastion.sh
+sed -i "s/__NAME__/backup-ui-$name/" /px-deploy/script-delete/training-backup-bastion.sh
