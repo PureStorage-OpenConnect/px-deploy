@@ -101,7 +101,6 @@ while ! dnf install -y at bash-completion nfs-utils chrony unzip ca-certificates
 done
 git config --global color.ui auto true
 systemctl enable --now atd chronyd
-[ "$stop_after" != 0 ] && echo /usr/sbin/poweroff | at now + $stop_after hours
 modprobe br_netfilter
 sysctl -w net.bridge.bridge-nf-call-iptables=1 >>/etc/sysctl.conf
 rm -f /etc/motd.d/cockpit
