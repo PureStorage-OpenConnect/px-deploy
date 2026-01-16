@@ -1,3 +1,7 @@
+##Improvements
+* removed stop_after parameter
+* simplified aws-load-balancer-controller installation
+
 # 6.6
 ##Important
 * px-backup deployments are now using a random admin password shown on `px-deploy connect` login

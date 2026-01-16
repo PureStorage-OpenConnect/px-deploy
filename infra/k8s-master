@@ -29,8 +29,7 @@ kubectl config set-context --current --namespace=default
 if [ $cloud = aws ] && [ $platform != eks ] && [ $platform != ocp4 ]; then
     echo "Applying aws-eks-load-balancer-controller"
     helm repo add eks https://aws.github.io/eks-charts
-    helm install aws-load-balancer-controller eks/aws-load-balancer-controller -n kube-system --version 1.14.0 --set clusterName=$name-$cluster --set feature-gates=ServiceTypeLoadBalancerOnly=true --wait
-    kubectl patch deployment aws-load-balancer-controller -n kube-system --type "json" -p '[{"op":"add","path":"/spec/template/spec/containers/0/args/-","value":"--default-load-balancer-scheme=internet-facing"}]'
+    helm install aws-load-balancer-controller eks/aws-load-balancer-controller -n kube-system --version 1.17.1 --set clusterName=$name-$cluster --set feature-gates=ServiceTypeLoadBalancerOnly=true --set defaultLoadBalancerScheme=internet-facing
     kubectl apply -f - <<EOF
 apiVersion: v1
 kind: ServiceAccount

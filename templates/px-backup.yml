@@ -5,7 +5,7 @@ cluster:
     scripts: ["install-px", "helm-backup", "helm-backup-apps"]
     nodes: 4
   - id: 2
-    scripts: ["install-px", "sock-shop", "petclinic"]
+    scripts: ["install-px", "petclinic"]
   - id: 3
     scripts: ["install-px"]
 

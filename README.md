@@ -165,7 +165,6 @@ The `defaults.yml` file sets a number of deployment variables:
  * `clusters` - the number of clusters to deploy
  * `k8s_version` - the version of Kubernetes to deploy
  * `tags` - a list of tags to be applied to each node. This is a comma-separate list of name=value pairs, for example: `"Owner=Bob,Purpose=Demo"`
- * `stop_after` - stop the intances after this many hours
  * `nodes` - the number of worker nodes on each cluster
  * `lock` - prevents deployment from being deleted by `px-deploy destroy ...`. use `px-deploy unlock -n ...` to unlock 
  * `platform` - can be set to either k8s, none, ocp4, eks or gke
