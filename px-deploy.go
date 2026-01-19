@@ -48,7 +48,6 @@ type Config struct {
 	Nodes                    string
 	K8s_Version              string
 	Px_Version               string
-	Stop_After               string
 	Pxd_uuid                 uuid.UUID
 	DryRun                   bool
 	NoSync                   bool
@@ -489,7 +488,6 @@ func main() {
 	cmdCreate.Flags().StringVarP(&flags.Nodes, "nodes", "N", "", "number of nodes to be deployed in each cluster (default "+defaults.Nodes+")")
 	cmdCreate.Flags().StringVarP(&flags.K8s_Version, "k8s_version", "k", "", "Kubernetes version to be deployed (default "+defaults.K8s_Version+")")
 	cmdCreate.Flags().StringVarP(&flags.Px_Version, "px_version", "P", "", "Portworx version to be deployed (default "+defaults.Px_Version+")")
-	cmdCreate.Flags().StringVarP(&flags.Stop_After, "stop_after", "s", "", "Stop instances after this many hours (default "+defaults.Stop_After+")")
 	cmdCreate.Flags().StringVarP(&flags.Aws_Type, "aws_type", "", "", "AWS type for each node (default "+defaults.Aws_Type+")")
 	cmdCreate.Flags().StringVarP(&flags.Aws_Ebs, "aws_ebs", "", "", "space-separated list of EBS volumes to be attached to worker nodes, eg \"gp2:20 standard:30\" (default "+defaults.Aws_Ebs+")")
 	cmdCreate.Flags().StringVarP(&flags.Aws_Region, "aws_region", "", "", "AWS Region (default "+defaults.Aws_Region+")")
@@ -690,10 +688,6 @@ func validate_config(config *Config) []string {
 
 	if !regexp.MustCompile(`^[0-9\.\-a-z]+$`).MatchString(config.Px_Version) {
 		errormsg = append(errormsg, "Invalid Portworx version '"+config.Px_Version+"'")
-	}
-
-	if !regexp.MustCompile(`^[0-9]+$`).MatchString(config.Stop_After) {
-		errormsg = append(errormsg, "Invalid number of hours")
 	}
 
 	if !regexp.MustCompile(`^((([\p{L}\p{Z}\p{N}_.:+\-]*)=([\p{L}\p{Z}\p{N}_.:+\-]*),)*(([\p{L}\p{Z}\p{N}_.:+\-]*)=([\p{L}\p{Z}\p{N}_.:+\-]*)){1})*$`).MatchString(config.Tags) {
