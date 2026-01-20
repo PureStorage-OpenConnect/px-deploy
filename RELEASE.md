@@ -1,3 +1,6 @@
+##Fixes
+* fix vSphere issue when one or more nodes is slow to provision
+
 ##Improvements
 * removed stop_after parameter
 * simplified aws-load-balancer-controller installation

@@ -76,9 +76,9 @@ elif [ $cloud = "vsphere" ]; then
     rm -f /tmp/hosts
     IFS=$'\n'
     for i in $(govc find / -type m -runtime.powerState poweredOn | egrep "$name-(master|node)"); do
-      ip=$(govc vm.info -json "$i" | jq -r '.virtualMachines[0].guest.ipAddress')
-      name=$(govc vm.info -json "$i" | jq -r '.virtualMachines[0].config.extraConfig[] | select(.key==("pxd.hostname")).value')
-      echo $ip $name >>/tmp/hosts
+      ip=$(govc vm.info -json "$i" | jq -r '.virtualMachines[0].guest.ipAddress' | grep '^[0-9\.]*$')
+      hostname=$(govc vm.info -json "$i" | jq -r '.virtualMachines[0].config.extraConfig[] | select(.key==("pxd.hostname")).value')
+      echo $ip $hostname >>/tmp/hosts
     done
     IFS=$' \t\n'
     [ $(cat /tmp/hosts | wc -w) -eq $[($nodes+1)*$clusters*2] ] && break
