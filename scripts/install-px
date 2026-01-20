@@ -159,21 +159,24 @@ while ! kubectl get stc -A -n portworx | grep -q 'Running\|Online'; do
   sleep 3
 done
 
+# metro renames stc
+STC=$(kubectl get StorageCluster -n portworx -o json | jq -r ".items[0].metadata.name")
+
 # If OCP, enabled console plugin and Prometheus
 if [ $platform = ocp4 ]; then
-  kubectl patch StorageCluster px-deploy-$cluster -n portworx --type merge --patch '{"spec": {"monitoring": {"prometheus": {"enabled": true}}}}'
+  kubectl patch StorageCluster $STC -n portworx --type merge --patch '{"spec": {"monitoring": {"prometheus": {"enabled": true}}}}'
   kubectl patch console.operator cluster --type json -p '[{"op": "add", "path": "/spec/plugins/-", "value": "portworx"}]'
 fi
 
 # Install Grafana
-kubectl patch StorageCluster px-deploy-$cluster -n portworx --type merge --patch '{"spec": {"monitoring": {"grafana": {"enabled": true}}}}'
+kubectl patch StorageCluster $STC -n portworx --type merge --patch '{"spec": {"monitoring": {"grafana": {"enabled": true}}}}'
 if [ $platform = k8s ]; then
   kubectl create service nodeport grafana -n portworx --tcp=3000:3000 --node-port 30112
 elif [ $platform = ocp4 ]; then
   while ! oc expose service px-grafana -n portworx; do
     echo waiting for px-grafana service
     sleep 1
-    kubectl patch StorageCluster px-deploy-$cluster -n portworx --type merge --patch '{"spec": {"monitoring": {"grafana": {"enabled": true}}}}'
+    kubectl patch StorageCluster $STC -n portworx --type merge --patch '{"spec": {"monitoring": {"grafana": {"enabled": true}}}}'
   done
 fi
 

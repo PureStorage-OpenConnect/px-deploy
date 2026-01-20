@@ -1,19 +1,8 @@
-# Configures a clusterpair from cluster 1 to this cluster
+# configures clusterpair for metro-dr
+
+scp root@master-1:/root/.kube/config /tmp/dest_kubeconfig
+
 while : ; do
-  POD=$(kubectl get pods -n portworx -lname=portworx --field-selector=status.phase=Running | tail -1 | cut -f 1 -d " ")
-  if [ "$security" = true ]; then
-    ADMIN_TOKEN=$(kubectl -n portworx get secret px-admin-token -o json | jq -r '.data."auth-token"' | base64 -d)
-    kubectl -n portworx exec -ti $POD -c portworx -- /opt/pwx/bin/pxctl context create admin --token=$ADMIN_TOKEN
-  fi
-  token=$(kubectl exec -n portworx -it $POD -- /opt/pwx/bin/pxctl cluster token show 2>/dev/null | cut -f 3 -d " ")
-  echo $token | grep -Eq '\w{128}'
-  [ $? -eq 0 ] && break
-  sleep 5
-  echo waiting for portworx
-done
-storkctl generate clusterpair -n kube-system remotecluster-$cluster | sed '/insert_storage_options_here/c\' >/var/tmp/cp.yaml
-while : ; do
-  cat /var/tmp/cp.yaml | ssh -oConnectTimeout=1 -oStrictHostKeyChecking=no master-1 kubectl apply -f -
-  [ $? -eq 0 ] && break
+  storkctl create clusterpair remotecluster --namespace kube-system --dest-kube-file /tmp/dest_kubeconfig --src-kube-file /root/.kube/config --mode sync-dr && break
   sleep 5
 done

@@ -33,10 +33,12 @@ while ! kubectl wait pod -n portworx --for=condition=ready --selector name=portw
     sleep 1
 done
 
-echo "wait for portworx-pvc-controller pods being ready"
-while ! kubectl wait pod -n portworx --for=condition=ready --selector name=portworx-pvc-controller; do
+if [ "$platform" != ocp4 ]; then
+  echo "wait for portworx-pvc-controller pods being ready"
+  while ! kubectl wait pod -n portworx --for=condition=ready --selector name=portworx-pvc-controller; do
     sleep 1
-done
+  done
+fi
 
 echo "wait for portworx-csi-driver pods being ready"
 while ! kubectl wait pod -n portworx --for=condition=ready --selector app=px-csi-driver; do
