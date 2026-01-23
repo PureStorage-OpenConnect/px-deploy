@@ -7,7 +7,7 @@
 
 # Default secrets store is k8s; can also set environment variable secrets=vault
 
-# You can also set csi=true and security=true
+# You can also set security=true
 
 # If you select cloud=vsphere, clouddrives will be provisioned from vsphere_disks
 
@@ -41,7 +41,6 @@ if [ "$cloud_drive" ]; then
     url="$url&e=AZURE_CLIENT_ID%3D$azure_client_id%2CAZURE_CLIENT_SECRET%3D$azure_client_secret%2CAZURE_TENANT_ID%3D$azure_tenant_id"
   fi
   url="$url&s=%22$cloud_drive%2Ctags%3Dpxd_uuid_cd%3A$pxd_uuid%22&mz=0&kd=$cloud_drive%2Ctags%3Dpxd_uuid_cd%3A$pxd_uuid"
-  #url="$url&s=%22$cloud_drive%2Ctags%3Dpxd_uuid%3A$pxd_uuid%22&mz=0"
   
   [ "$cloud" = aws ] && url="$url&ce=aws"
   [ "$cloud" = gcp ] && url="$url&ce=gce"
@@ -63,8 +62,6 @@ fi
 [ "$platform" = eks ] && url="$url&eks=true"
 [ "$platform" = ocp4 ] && url="$url&r=17001"
 [ "$security" = true ] && url="$url&security=true"
-[ -n "$csi" ] && url="$url&csi=$csi"
-#[ "$etcd" = EXTERNAL ] && url="$url&k=etcd:http://$(ssh master-1 curl https://ipinfo.io/ip):2382"
 [ "$etcd" = EXTERNAL ] && url="$url&k=etcd:http://$(grep master-1 /etc/hosts | cut -d\  -f1):2382"
 
 if [ "$platform" = ocp4 ]; then
@@ -108,8 +105,8 @@ EOF
 fi
 
 if [ "$platform" != ocp4 ]; then
-  kubectl apply -f "https://install.portworx.com/$px_version?comp=pxoperator&kbver=$k8s_version"
-  while ! kubectl wait --for=condition=ready pod -lname=portworx-operator -n kube-system; do
+  curl -sk "https://install.portworx.com/$px_version?comp=pxoperator&kbver=$k8s_version" | sed 's/kube-system/portworx/g' | sed 's/imagePullPolicy: Always/imagePullPolicy: IfNotPresent/g' | kubectl apply -f -
+  while ! kubectl wait --for=condition=ready pod -lname=portworx-operator -n portworx; do
     sleep 2
   done
 fi
@@ -131,6 +128,7 @@ fi
 curl -sko /tmp/px.yml $url
 sed -i 's/namespace: kube-system/namespace: portworx/' /tmp/px.yml
 sed -i 's/imagePullPolicy: Always/imagePullPolicy: IfNotPresent/' /tmp/px.yml
+sed -i '/annotations:/a\    portworx.io/health-check: "skip"' /tmp/px.yml
 [ -f "/tmp/metro" ] && clusterdomain=$(cat /tmp/metro) && sed -i '/  annotations:/a\ \ \ \ '"$clusterdomain"'' /tmp/px.yml
 
 # check if CRDs are created
