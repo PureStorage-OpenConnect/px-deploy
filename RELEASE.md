@@ -1,9 +1,11 @@
 ##Fixes
 * fix vSphere issue when one or more nodes is slow to provision
+* provision worker nodes by default rather than just k8s
 
 ##Improvements
-* removed stop_after parameter
-* simplified aws-load-balancer-controller installation
+* remove stop_after parameter
+* simplify aws-load-balancer-controller installation
+* simplify and speed up provisioning
 
 # 6.6
 ##Important
