@@ -1,4 +1,3 @@
-kubeadm config images list --kubernetes-version $k8s_version | xargs -n1 -P0 ctr -n k8s.io images pull
 kubeadm init --apiserver-advertise-address=$(hostname -i) --pod-network-cidr=10.244.0.0/16 --kubernetes-version $k8s_version
 mkdir /root/.kube
 cp /etc/kubernetes/admin.conf /root/.kube/config
@@ -15,8 +14,8 @@ while true; do
         echo "kube api is ready!"
         break
     fi
-    echo "kube api not ready. Waiting 5 seconds..."
-    sleep 5
+    echo "kube api not ready. Waiting 2 seconds..."
+    sleep 2
 done
 # label node
 kubectl label node $(hostname) node-role.kubernetes.io/master=master

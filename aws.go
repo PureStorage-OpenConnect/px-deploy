@@ -167,7 +167,7 @@ func aws_create_variables(config *Config) []string {
 			{
 				tf_variables_eks = append(tf_variables_eks, "  \""+masternum+"\" = \""+tf_cluster_instance_type+"\",")
 			}
-		case "k8s":
+		default:
 			{
 				tf_variables = append(tf_variables, "  {")
 				tf_variables = append(tf_variables, "    role = \"node\"")
