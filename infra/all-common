@@ -4,6 +4,7 @@ sysctl -w net.ipv4.ip_forward=1 >>/etc/sysctl.conf
 
 sed -i '/^127.0.0.1.*\(master\|node\)/d' /etc/hosts
 while ! yum install -y dnf; do sleep 1; done
+echo "max_parallel_downloads=10" >>/etc/dnf/dnf.conf
 while ! dnf install -y epel-release; do sleep 1; done
 while ! dnf install -y jq; do sleep 1; done
 if [ -f /etc/selinux/config ]; then
