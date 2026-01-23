@@ -1,5 +1,7 @@
 dnf install -y kernel-devel sg3_utils device-mapper-multipath iscsi-initiator-utils &
-(echo docker.io/portworx/{px-enterprise,oci-monitor}:$px_version ; echo docker.io/$(curl -sk "https://install.portworx.com/$px_version?kb_ver=$k8s_version&comp=stork" | awk '/image:/{print$2}') ; kubeadm config images list --kubernetes-version $k8s_version 2>/dev/null) | xargs -n1 -P0 ctr -n k8s.io images pull
+ctr -n k8s.io images pull docker.io/$(curl -sk "https://install.portworx.com/$px_version?comp=pxoperator&kbver=$k8s_version" | awk '/image:/{print$2}') &
+ctr -n k8s.io images pull docker.io/portworx/px-enterprise:$px_version &
+ctr -n k8s.io images pull docker.io/portworx/oci-monitor:$px_version &
 while : ; do
   command=$(ssh -oConnectTimeout=1 -oStrictHostKeyChecking=no master-$cluster kubeadm token create --print-join-command)
   echo $command | grep -qE '[0-9a-f]{64}'
