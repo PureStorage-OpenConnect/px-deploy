@@ -2,6 +2,6 @@ watch kubectl get events --field-selector involvedObject.kind=AutopilotRule --so
 
 watch --color pxctl volume inspect <volume>
 
-kubectl exec $POD -n autopilot-lab -- createdb pxdemo
+kubectl exec deploy/postgres -n autopilot-lab -- createdb pxdemo
 
-kubectl exec $POD -n autopilot-lab -- pgbench -i -s 50 pxdemo
+kubectl exec deploy/postgres -n autopilot-lab -- pgbench -i -s 50 pxdemo
