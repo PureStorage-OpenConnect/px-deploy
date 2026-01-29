@@ -9,11 +9,12 @@ EOF
 curl -o /etc/skel/training/03-Installation/px-operator.yml "https://install.portworx.com/$px_version?comp=pxoperator&kbver=$k8s_version&ns=portworx"
 curl "https://install.portworx.com/$px_version?operator=true&mc=false&kbver=$k8s_version&ns=portworx&b=true&c=px-cluster&stork=true&csi=true&mon=true&tel=true&st=k8s&promop=true" | grep -v install.portworx.com >/etc/skel/training/03-Installation/px.yml
 
-# Create training users
+# Create training users and patch yaml
 for i in $(seq 1 $clusters); do
   useradd training$i
   passwd --stdin training$i <<<portworx
   chmod 755 /home/training$i
+  sed -i "s/<nn>/$(printf %.2d $i)/" /home/training$i/training/05-Application_Mobility/backup-location.yaml
 done
 
 # Install storkctl and pxctl

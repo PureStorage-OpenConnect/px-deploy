@@ -1,10 +1,12 @@
 ### Snapshots
 
-kubectl exec $POD -n postgres -- psql -c 'drop database pxdemo'
+kubectl exec deploy/postgres -n postgres -- psql -c 'drop database pxdemo'
 
-kubectl exec $POD -n postgres -- psql -l
+kubectl exec deploy/postgres -n postgres -- psql -l
 
-kubectl exec $POD -n postgres -- psql pxdemo -c 'select count(*) from pgbench_accounts'
+kubectl exec deploy/postgres -n postgres -- psql pxdemo -c 'select count(*) from pgbench_accounts'
+
+kubectl exec deploy/postgres-snap -n postgres -- psql pxdemo -c 'select count(*) from pgbench_accounts'
 
 ### Cloudsnaps
 
@@ -18,15 +20,15 @@ pxctl cloudsnap status
 
 storkctl get volumesnapshots -n postgres
 
+kubectl exec deploy/postgres-cloudsnap -n postgres -- psql pxdemo -c 'select count(*) from pgbench_accounts'
+
 ### Stateful Application Backups
 
-kubectl get pod -l app=postgres -n backup-lab
+kubectl exec deploy/postgres -n backup-lab -- createdb pxdemo
 
-kubectl exec $POD -n backup-lab -- createdb pxdemo
+kubectl exec deploy/postgres -n backup-lab -- pgbench -i -s 50 pxdemo
 
-kubectl exec $POD -n backup-lab -- pgbench -i -s 50 pxdemo
-
-kubectl exec $POD -n backup-lab -- psql pxdemo -c 'select count(*) from pgbench_accounts'
+kubectl exec deploy/postgres -n backup-lab -- psql pxdemo -c 'select count(*) from pgbench_accounts'
 
 kubectl get backuplocation -n backup-lab
 
@@ -47,10 +49,10 @@ storkctl create clusterpair CHANGEME \
 --s3-access-key minio --s3-secret-key minio123 --s3-region dummy \
 --disable-ssl --mode migration --unidirectional
 
-kubectl exec $POD -n CHANGEME -- redis-cli --no-auth-warning -a password SET foo bar
+kubectl exec deploy/redis -n CHANGEME -- redis-cli --no-auth-warning -a password SET foo bar
 
-kubectl exec $POD -n CHANGEME -- redis-cli --no-auth-warning -a password GET foo
+kubectl exec deploy/redis -n CHANGEME -- redis-cli --no-auth-warning -a password GET foo
 
-kubectl exec $POD -n CHANGEME -- redis-cli --no-auth-warning -a password SAVE
+kubectl exec deploy/redis -n CHANGEME -- redis-cli --no-auth-warning -a password SAVE
 
 storkctl get migrations -n kube-system

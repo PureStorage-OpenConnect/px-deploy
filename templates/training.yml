@@ -1,6 +1,6 @@
 description: Deploys training clusters
 scripts: ["training-cluster"]
-px_version: 3.5.1
+px_version: 3.5.2
 k8s_version: 1.33.5
 run_predelete: true
 cluster:
