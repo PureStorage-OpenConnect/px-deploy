@@ -106,3 +106,9 @@ variable "aws_secret_access_key" {
 	description ="AWS Secret Access Key"
 	type		= string
 }
+
+variable "aws_session_token" {
+	description = "AWS Session Token (optional, for temporary credentials)"
+	type        = string
+	default     = ""
+}

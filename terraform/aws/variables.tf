@@ -56,6 +56,24 @@ variable "aws_secret_access_key" {
 	type		= string
 }
 
+variable "aws_session_token" {
+	description = "AWS Session Token (optional, for temporary credentials)"
+	type        = string
+	default     = ""
+}
+
+variable "aws_existing_vpc_id" {
+	description = "Existing VPC ID to use instead of creating new one (optional)"
+	type        = string
+	default     = ""
+}
+
+variable "aws_existing_subnet_id" {
+	description = "Existing Subnet ID to use (requires aws_existing_vpc_id, optional)"
+	type        = string
+	default     = ""
+}
+
 data "local_file" "env_script" {
 	filename = "${path.module}/env.sh"
 }

@@ -12,7 +12,10 @@ aws_region: eu-west-1
 aws_type: t3.large
 aws_ebs: "gp2:50"
 aws_access_key_id: ""
-aws_secret_access_key: "" 
+aws_secret_access_key: ""
+aws_session_token: ""  # Optional: for temporary credentials (IAM Identity Center, STS)
+aws_existing_vpc_id: ""  # Optional: use existing VPC instead of creating new one
+aws_existing_subnet_id: ""  # Optional: use existing subnet (requires aws_existing_vpc_id)
 eks_version: "1.33"
 #aws_ebs: "gp2:20 standard:30"
 

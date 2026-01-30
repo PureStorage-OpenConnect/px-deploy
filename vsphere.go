@@ -239,6 +239,7 @@ func vsphere_create_variables(config *Config) []string {
 	tf_variables = append(tf_variables, "vsphere_cpu = \""+config.Vsphere_Cpu+"\"")
 	tf_variables = append(tf_variables, "aws_access_key_id = \""+config.Aws_Access_Key_Id+"\"")
 	tf_variables = append(tf_variables, "aws_secret_access_key = \""+config.Aws_Secret_Access_Key+"\"")
+	tf_variables = append(tf_variables, "aws_session_token = \""+config.Aws_Session_Token+"\"")
 
 	if (config.Vsphere_Dns != "") && (config.Vsphere_Gw != "") && (config.Vsphere_Node_Ip != "") {
 		tf_variables = append(tf_variables, "vsphere_dns = \""+config.Vsphere_Dns+"\"")

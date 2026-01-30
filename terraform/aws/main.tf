@@ -93,7 +93,20 @@ resource "aws_key_pair" "deploy_key" {
 	public_key = tls_private_key.ssh.public_key_openssh
 }
 
+# Data sources for existing VPC and subnet (when provided)
+data "aws_vpc" "existing" {
+	count = var.aws_existing_vpc_id != "" ? 1 : 0
+	id    = var.aws_existing_vpc_id
+}
+
+data "aws_subnet" "existing" {
+	count = var.aws_existing_subnet_id != "" ? 1 : 0
+	id    = var.aws_existing_subnet_id
+}
+
+# Create new VPC only if existing VPC ID is not provided
 resource "aws_vpc" "vpc" {
+	count = var.aws_existing_vpc_id == "" ? 1 : 0
 	cidr_block	= var.aws_cidr_vpc
 	enable_dns_hostnames	= true
 	enable_dns_support		= true
@@ -102,11 +115,12 @@ resource "aws_vpc" "vpc" {
 	}
 }
 
+# Create new subnets only if existing subnet ID is not provided
 resource "aws_subnet" "subnet" {
-	count					= 	var.clusters
+	count					= 	var.aws_existing_subnet_id == "" ? var.clusters : 0
 	availability_zone 		= 	data.aws_availability_zones.available.names[0]
 	map_public_ip_on_launch =   true
-	vpc_id 					=	aws_vpc.vpc.id
+	vpc_id 					=	local.vpc_id
 	cidr_block 				= 	"192.168.${count.index + 101}.0/24"
 	tags = {
 		Name = format("%s-%s-subnet-%s",var.name_prefix,var.config_name, count.index + 1)
@@ -114,19 +128,29 @@ resource "aws_subnet" "subnet" {
 		}
 }
 
+# Local values to reference VPC and subnet (either existing or created)
+locals {
+	vpc_id = var.aws_existing_vpc_id != "" ? data.aws_vpc.existing[0].id : aws_vpc.vpc[0].id
+	vpc_cidr = var.aws_existing_vpc_id != "" ? data.aws_vpc.existing[0].cidr_block : aws_vpc.vpc[0].cidr_block
+	subnet_id = var.aws_existing_subnet_id != "" ? data.aws_subnet.existing[0].id : aws_subnet.subnet[0].id
+	use_existing_vpc = var.aws_existing_vpc_id != ""
+}
+
 data "aws_caller_identity" "current" {}
 
+# Only create GuardDuty VPC endpoint if using new VPC (existing VPC may already have one)
 resource "aws_vpc_endpoint" "guardduty" {
-  vpc_id            = aws_vpc.vpc.id
+  count = local.use_existing_vpc ? 0 : 1
+  vpc_id            = local.vpc_id
   service_name      = format("com.amazonaws.%s.guardduty-data",var.aws_region)
   vpc_endpoint_type = "Interface"
-  
+
   subnet_ids = [
-    aws_subnet.subnet[0].id
+    local.subnet_id
   ]
 
   security_group_ids = [
-    aws_security_group.guardduty.id
+    aws_security_group.guardduty[0].id
   ]
 
   private_dns_enabled = true
@@ -150,52 +174,58 @@ resource "aws_vpc_endpoint" "guardduty" {
 })
 }
 
+# Only create GuardDuty security group if using new VPC
 resource "aws_security_group" "guardduty" {
+	count = local.use_existing_vpc ? 0 : 1
 	name 		= 	format("pxd-gd-%s",var.config_name)
 	description = 	"Security group for guardduty"
-	vpc_id = aws_vpc.vpc.id
-	
+	vpc_id = local.vpc_id
+
    	ingress {
 		description = "https"
 		from_port 	= 443
 		to_port 	= 443
 		protocol	= "tcp"
-		cidr_blocks = [var.aws_cidr_vpc]
+		cidr_blocks = [local.vpc_cidr]
 		}
     tags = {
 		Name=format("pxd-gd-%s",var.config_name)
 		}
 }
 
-
+# Only create Internet Gateway if using new VPC (not existing VPC)
 resource "aws_internet_gateway" "igw" {
-	vpc_id = aws_vpc.vpc.id
+	count = local.use_existing_vpc ? 0 : 1
+	vpc_id = local.vpc_id
 	tags = {
 		Name = format("%s-%s-%s",var.name_prefix,var.config_name,"igw")
 	}
 }
 
+# Only create route table if using new VPC (existing VPC uses its own route table)
 resource "aws_route_table" "rt" {
-	vpc_id = aws_vpc.vpc.id
+	count = local.use_existing_vpc ? 0 : 1
+	vpc_id = local.vpc_id
 	route {
 		cidr_block = "0.0.0.0/0"
-		gateway_id = aws_internet_gateway.igw.id
+		gateway_id = aws_internet_gateway.igw[0].id
 	}
 	tags = {
 		Name = format("%s-%s-%s",var.name_prefix,var.config_name,"rt")
-	}  
+	}
 }
 
+# Only create route table association if using new VPC
 resource "aws_route_table_association" "rt" {
-	count			= var.clusters
+	count			= local.use_existing_vpc ? 0 : var.clusters
 	subnet_id 		= aws_subnet.subnet[count.index].id
-	route_table_id 	= aws_route_table.rt.id
+	route_table_id 	= aws_route_table.rt[0].id
 }
 
 resource "aws_security_group" "sg_px-deploy" {
 	name 		= 	format("px-deploy-%s",var.config_name)
 	description = 	"Security group for px-deploy (tf-created)"
-	vpc_id = aws_vpc.vpc.id
+	vpc_id = local.vpc_id
 	ingress {
 		description = "ssh"
 		from_port 	= 22
@@ -263,9 +293,9 @@ resource "aws_security_group" "sg_px-deploy" {
     ingress {
 		description = "all ingress from within vpc"
 		from_port 	= 0
-		to_port 	= 0 
+		to_port 	= 0
 		protocol	= "all"
-		cidr_blocks = [aws_vpc.vpc.cidr_block]
+		cidr_blocks = [local.vpc_cidr]
 		}
 
 	egress {
@@ -367,9 +397,12 @@ locals {
     for vm in var.nodeconfig : [
       for i in range(1, vm.nodecount+1) : {
         instance_name 	= "${vm.role}-${vm.cluster}-${i}"
+        # To maintain compatibility with scripts: master nodes use "master-N", worker nodes use "node-N-M"
+        resource_key    = vm.role == "master" ? "master-${vm.cluster}" : "${vm.role}-${vm.cluster}-${i}"
         instance_type 	= vm.instance_type
 		nodenum			= i
 		cluster 		= vm.cluster
+		role 			= vm.role
         blockdisks 		= vm.ebs_block_devices
 		ip_start 		= vm.ip_start
       }
@@ -382,14 +415,16 @@ locals {
 }
 
 resource "aws_instance" "node" {
-	for_each 					=	{for server in local.instances: server.instance_name =>  server}
+	for_each 					=	{for server in local.instances: server.resource_key =>  server}
 	ami 						= 	data.aws_ami.rocky.id
 	instance_type				=	each.value.instance_type
-	iam_instance_profile		=	aws_iam_instance_profile.ec2_profile.name	
+	iam_instance_profile		=	aws_iam_instance_profile.ec2_profile.name
 	vpc_security_group_ids 		=	[aws_security_group.sg_px-deploy.id]
-	subnet_id					=	aws_subnet.subnet[each.value.cluster - 1].id
-	private_ip 					= 	format("%s.%s.%s",var.ip_base,each.value.cluster+100, each.value.ip_start + each.value.nodenum)
-	associate_public_ip_address = 	true
+	subnet_id					=	var.aws_existing_subnet_id != "" ? local.subnet_id : aws_subnet.subnet[each.value.cluster - 1].id
+	# Only assign static private IP when creating new VPC/subnet, otherwise let AWS assign dynamically
+	private_ip 					= 	var.aws_existing_subnet_id != "" ? null : format("%s.%s.%s",var.ip_base,each.value.cluster+100, each.value.ip_start + each.value.nodenum)
+	# Only assign public IP when creating new VPC, not when using existing VPC (assumes site-to-site VPN or other private connectivity)
+	associate_public_ip_address = 	var.aws_existing_vpc_id == "" ? true : false
 	key_name 					= 	aws_key_pair.deploy_key.key_name
 	
 	root_block_device {
@@ -419,6 +454,7 @@ resource "aws_instance" "node" {
     	}
 	}
 	user_data_base64			= 	base64gzip(local_file.cloud-init[each.key].content)
+	# To maintain compatibility with scripts: master nodes are named "master-N", worker nodes are "node-N-M"
 	tags 					= {
 								Name = each.key
 								pxd_cluster = each.value.cluster
@@ -427,7 +463,8 @@ resource "aws_instance" "node" {
         connection {
                         type = "ssh"
                         user = "rocky"
-                        host = "${self.public_ip}"
+                        # Use private IP when using existing VPC (assumes site-to-site VPN), public IP otherwise
+                        host = var.aws_existing_vpc_id == "" ? "${self.public_ip}" : "${self.private_ip}"
                         private_key = tls_private_key.ssh.private_key_openssh
         }
 		
@@ -455,20 +492,22 @@ resource "aws_instance" "node" {
 }
 
 resource "local_file" "cloud-init" {
-	for_each 					=	{for server in local.instances: server.instance_name =>  server}
+	for_each 					=	{for server in local.instances: server.resource_key =>  server}
 	content = templatefile("${path.module}/cloud-init.tpl", {
 		tpl_priv_key = base64encode(tls_private_key.ssh.private_key_openssh),
 		tpl_aws_access_key_id = var.aws_access_key_id
 		tpl_aws_secret_access_key = var.aws_secret_access_key
+		tpl_aws_session_token = var.aws_session_token
+		tpl_aws_existing_vpc_id = var.aws_existing_vpc_id
 		tpl_name = each.key
-		tpl_vpc = aws_vpc.vpc.id,
+		tpl_vpc = local.vpc_id,
 		tpl_sg = aws_security_group.sg_px-deploy.id,
-		tpl_subnet = aws_subnet.subnet[each.value.cluster - 1].id,
-		tpl_gw = aws_internet_gateway.igw.id,
-		tpl_routetable = aws_route_table.rt.id,
+		tpl_subnet = var.aws_existing_subnet_id != "" ? local.subnet_id : aws_subnet.subnet[each.value.cluster - 1].id,
+		tpl_gw = local.use_existing_vpc ? "" : aws_internet_gateway.igw[0].id,
+		tpl_routetable = local.use_existing_vpc ? "" : aws_route_table.rt[0].id,
 		tpl_ami = 	data.aws_ami.rocky.id,
 		tpl_cluster = each.value.cluster
-		}	
+		}
 	)
 	filename = "${path.module}/cloud-init-${each.key}-generated.yaml"
 }
@@ -479,11 +518,11 @@ resource "local_file" "cloud-init" {
 #}
 
 resource "local_file" "aws-returns" {
-	content = templatefile("${path.module}/aws-returns.tpl", { 
-		tpl_vpc = aws_vpc.vpc.id,
+	content = templatefile("${path.module}/aws-returns.tpl", {
+		tpl_vpc = local.vpc_id,
 		tpl_sg = aws_security_group.sg_px-deploy.id,
-		tpl_gw = aws_internet_gateway.igw.id,
-		tpl_routetable = aws_route_table.rt.id,
+		tpl_gw = local.use_existing_vpc ? "" : aws_internet_gateway.igw[0].id,
+		tpl_routetable = local.use_existing_vpc ? "" : aws_route_table.rt[0].id,
 		tpl_ami = 	data.aws_ami.rocky.id,
 		}
 	)

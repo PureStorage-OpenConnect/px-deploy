@@ -60,6 +60,9 @@ type Config struct {
 	Tags                     string
 	Aws_Access_Key_Id        string
 	Aws_Secret_Access_Key    string
+	Aws_Session_Token        string
+	Aws_Existing_Vpc_Id      string
+	Aws_Existing_Subnet_Id   string
 	Gcp_Type                 string
 	Gcp_Disks                string
 	Gcp_Zone                 string
@@ -493,6 +496,9 @@ func main() {
 	cmdCreate.Flags().StringVarP(&flags.Aws_Region, "aws_region", "", "", "AWS Region (default "+defaults.Aws_Region+")")
 	cmdCreate.Flags().StringVarP(&flags.Aws_Access_Key_Id, "aws_access_key_id", "", "", "your AWS API access key id (default \""+defaults.Aws_Access_Key_Id+"\")")
 	cmdCreate.Flags().StringVarP(&flags.Aws_Secret_Access_Key, "aws_secret_access_key", "", "", "your AWS API secret access key (default \""+defaults.Aws_Secret_Access_Key+"\")")
+	cmdCreate.Flags().StringVarP(&flags.Aws_Session_Token, "aws_session_token", "", "", "AWS session token for temporary credentials (optional)")
+	cmdCreate.Flags().StringVarP(&flags.Aws_Existing_Vpc_Id, "aws_existing_vpc_id", "", "", "Use existing VPC ID instead of creating new one (optional)")
+	cmdCreate.Flags().StringVarP(&flags.Aws_Existing_Subnet_Id, "aws_existing_subnet_id", "", "", "Use existing subnet ID (requires aws_existing_vpc_id, optional)")
 	cmdCreate.Flags().StringVarP(&flags.Tags, "tags", "", "", "comma-separated list of tags to be applies to cloud nodes, eg \"Owner=Bob,Purpose=Demo\"")
 	cmdCreate.Flags().StringVarP(&flags.Gcp_Type, "gcp_type", "", "", "GCP type for each node (default "+defaults.Gcp_Type+")")
 	cmdCreate.Flags().StringVarP(&flags.Gcp_Project, "gcp_project", "", "", "GCP Project")
@@ -820,11 +826,17 @@ func prepare_deployment(config *Config, flags *Config, createName string, create
 		}
 	}
 
+	// Support AWS_SESSION_TOKEN environment variable
+	if config.Aws_Session_Token == "" {
+		config.Aws_Session_Token = os.Getenv("AWS_SESSION_TOKEN")
+	}
+
 	// remove AWS credentials from deployment specific yml as we should not rely on it later
 	cleanConfig := *config
 	if cleanConfig.Cloud == "aws" {
 		cleanConfig.Aws_Access_Key_Id = ""
 		cleanConfig.Aws_Secret_Access_Key = ""
+		cleanConfig.Aws_Session_Token = ""
 	}
 	y, _ := yaml.Marshal(cleanConfig)
 
@@ -857,7 +869,8 @@ func get_deployment_status(config *Config, cluster int, c chan Deployment_Status
 
 	switch config.Cloud {
 	case "aws":
-		ip = aws_get_node_ip(config.Name, fmt.Sprintf("master-%v-1", cluster))
+		// AWS uses master-N naming (without instance number)
+		ip = aws_get_node_ip(config.Name, fmt.Sprintf("master-%v", cluster))
 	case "azure":
 		ip = azure_get_node_ip(config.Name, fmt.Sprintf("master-%v-1", cluster))
 	case "gcp":
@@ -1097,9 +1110,15 @@ func run_terraform_apply(config *Config) string {
 	case "aws":
 		cloud_auth = append(cloud_auth, fmt.Sprintf("AWS_ACCESS_KEY_ID=%s", config.Aws_Access_Key_Id))
 		cloud_auth = append(cloud_auth, fmt.Sprintf("AWS_SECRET_ACCESS_KEY=%s", config.Aws_Secret_Access_Key))
+		if config.Aws_Session_Token != "" {
+			cloud_auth = append(cloud_auth, fmt.Sprintf("AWS_SESSION_TOKEN=%s", config.Aws_Session_Token))
+		}
 		// make aws keys consumeable within the terraform scripts
 		cloud_auth = append(cloud_auth, fmt.Sprintf("TF_VAR_AWS_ACCESS_KEY_ID=%s", config.Aws_Access_Key_Id))
 		cloud_auth = append(cloud_auth, fmt.Sprintf("TF_VAR_AWS_SECRET_ACCESS_KEY=%s", config.Aws_Secret_Access_Key))
+		if config.Aws_Session_Token != "" {
+			cloud_auth = append(cloud_auth, fmt.Sprintf("TF_VAR_AWS_SESSION_TOKEN=%s", config.Aws_Session_Token))
+		}
 	}
 	cmd.Env = append(cmd.Env, cloud_auth...)
 	err := cmd.Run()
@@ -1249,6 +1268,7 @@ func destroy_deployment(name string, destroyForce bool) {
 		defaultConfig := parse_yaml("/px-deploy/.px-deploy/defaults.yml")
 		config.Aws_Access_Key_Id = defaultConfig.Aws_Access_Key_Id
 		config.Aws_Secret_Access_Key = defaultConfig.Aws_Secret_Access_Key
+		config.Aws_Session_Token = defaultConfig.Aws_Session_Token
 
 		cfg := aws_load_config(&config)
 		client := aws_connect_ec2(&cfg)
@@ -1284,6 +1304,9 @@ func destroy_deployment(name string, destroyForce bool) {
 				var cloud_auth []string
 				cloud_auth = append(cloud_auth, fmt.Sprintf("AWS_ACCESS_KEY_ID=%s", config.Aws_Access_Key_Id))
 				cloud_auth = append(cloud_auth, fmt.Sprintf("AWS_SECRET_ACCESS_KEY=%s", config.Aws_Secret_Access_Key))
+				if config.Aws_Session_Token != "" {
+					cloud_auth = append(cloud_auth, fmt.Sprintf("AWS_SESSION_TOKEN=%s", config.Aws_Session_Token))
+				}
 				fmt.Println(Red + "FIXME: removing helm deployments from rancher state." + Reset)
 				cmd1 := exec.Command("terraform", "-chdir=/px-deploy/.px-deploy/tf-deployments/"+config.Name, "state", "rm", "helm_release.rancher_server")
 				cmd1.Stdout = os.Stdout
@@ -1501,6 +1524,9 @@ func run_terraform_destroy(config *Config) string {
 	case "aws":
 		cloud_auth = append(cloud_auth, fmt.Sprintf("AWS_ACCESS_KEY_ID=%s", config.Aws_Access_Key_Id))
 		cloud_auth = append(cloud_auth, fmt.Sprintf("AWS_SECRET_ACCESS_KEY=%s", config.Aws_Secret_Access_Key))
+		if config.Aws_Session_Token != "" {
+			cloud_auth = append(cloud_auth, fmt.Sprintf("AWS_SESSION_TOKEN=%s", config.Aws_Session_Token))
+		}
 	}
 
 	fmt.Println(White + "running Terraform PLAN" + Reset)
@@ -1615,7 +1641,8 @@ func get_ip(deployment string) string {
 	config := parse_yaml("/px-deploy/.px-deploy/deployments/" + deployment + ".yml")
 	var output []byte
 	if config.Cloud == "aws" {
-		output = []byte(aws_get_node_ip(deployment, "master-1-1"))
+		// AWS uses master-1 naming (without instance number)
+		output = []byte(aws_get_node_ip(deployment, "master-1"))
 	} else if config.Cloud == "gcp" {
 		output = []byte(gcp_get_node_ip(deployment, config.Name+"-master-1-1"))
 	} else if config.Cloud == "azure" {
@@ -1893,15 +1920,16 @@ func write_nodescripts(config Config) {
 		tf_master_script = append(tf_master_script, "echo \"master-"+masternum+" $IP \" >> /var/log/px-deploy/completed/tracking \n"...)
 
 		//write master script for cluster
-		err := os.WriteFile("/px-deploy/.px-deploy/tf-deployments/"+config.Name+"/master-"+masternum+"-1", tf_master_script, 0666)
+		// To maintain compatibility with scripts: master nodes are named "master-N" (without instance number)
+		err := os.WriteFile("/px-deploy/.px-deploy/tf-deployments/"+config.Name+"/master-"+masternum, tf_master_script, 0666)
 		if err != nil {
 			die(err.Error())
 		}
 
-		cmd := exec.Command("bash", "-n", "/px-deploy/.px-deploy/tf-deployments/"+config.Name+"/master-"+masternum+"-1")
+		cmd := exec.Command("bash", "-n", "/px-deploy/.px-deploy/tf-deployments/"+config.Name+"/master-"+masternum)
 		err = cmd.Run()
 		if err != nil {
-			die("PANIC: generated script '.px-deploy/tf-deployments/" + config.Name + "/master-" + masternum + "-1' is not valid Bash")
+			die("PANIC: generated script '.px-deploy/tf-deployments/" + config.Name + "/master-" + masternum + "' is not valid Bash")
 		}
 		// set cluster specfic node # to config node #
 		CL_Nodes := Nodes

@@ -18,6 +18,9 @@ write_files:
      [default]
      aws_access_key_id = ${tpl_aws_access_key_id}
      aws_secret_access_key = ${tpl_aws_secret_access_key}
+     %{ if tpl_aws_session_token != "" ~}
+     aws_session_token = ${tpl_aws_session_token}
+     %{ endif ~}
     path: /tmp/credentials
     permissions: '0600'
   

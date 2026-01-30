@@ -1,5 +1,6 @@
 AWS_ACCESS_KEY=$(sed -n 's/aws_access_key_id[ =]*//p' /root/.aws/credentials 2>/dev/null)
 AWS_SECRET_KEY=$(sed -n 's/aws_secret_access_key[ =]*//p' /root/.aws/credentials 2>/dev/null)
+AWS_SESSION_TOKEN=$(sed -n 's/aws_session_token[ =]*//p' /root/.aws/credentials 2>/dev/null)
 ADMIN_PW=$(kubectl get secret pxcentral-keycloak-http -n central -o jsonpath="{.data.password}" | base64 --decode)
 
 if [ "$platform" = ocp4 ]; then
