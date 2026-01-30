@@ -9,6 +9,9 @@ write_files:
      [default]
      aws_access_key_id = ${tpl_aws_access_key_id}
      aws_secret_access_key = ${tpl_aws_secret_access_key}
+     %{ if tpl_aws_session_token != "" ~}
+     aws_session_token = ${tpl_aws_session_token}
+     %{ endif ~}
     path: /tmp/credentials
     permissions: '0600'
   
@@ -22,6 +25,7 @@ runcmd:
 - export aws__gw="${tpl_gw}"
 - export aws__routetable="${tpl_routetable}"
 - export aws__ami="${tpl_ami}"
+- export aws_existing_vpc_id="${tpl_aws_existing_vpc_id}"
 - export cloud="aws"
 - export cluster="${tpl_cluster}"
 - export KUBECONFIG=/root/.kube/config

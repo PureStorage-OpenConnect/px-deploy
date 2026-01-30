@@ -96,6 +96,9 @@ func aws_create_variables(config *Config) []string {
 	tf_variables = append(tf_variables, "aws_region = \""+config.Aws_Region+"\"")
 	tf_variables = append(tf_variables, "aws_access_key_id = \""+config.Aws_Access_Key_Id+"\"")
 	tf_variables = append(tf_variables, "aws_secret_access_key = \""+config.Aws_Secret_Access_Key+"\"")
+	tf_variables = append(tf_variables, "aws_session_token = \""+config.Aws_Session_Token+"\"")
+	tf_variables = append(tf_variables, "aws_existing_vpc_id = \""+config.Aws_Existing_Vpc_Id+"\"")
+	tf_variables = append(tf_variables, "aws_existing_subnet_id = \""+config.Aws_Existing_Subnet_Id+"\"")
 
 	switch config.Platform {
 	case "ocp4":
@@ -209,7 +212,7 @@ func aws_load_config(config *Config) aws.Config {
 		context.TODO(),
 		//awscfg.WithRetryer(func() aws.Retryer { return retry.AddWithMaxAttempts(retry.NewStandard(), 15) }),
 		awscfg.WithRegion(config.Aws_Region),
-		awscfg.WithCredentialsProvider(awscredentials.NewStaticCredentialsProvider(config.Aws_Access_Key_Id, config.Aws_Secret_Access_Key, "")))
+		awscfg.WithCredentialsProvider(awscredentials.NewStaticCredentialsProvider(config.Aws_Access_Key_Id, config.Aws_Secret_Access_Key, config.Aws_Session_Token)))
 	if err != nil {
 		panic(fmt.Sprintf("failed loading config, %v \n", err))
 	}
@@ -342,13 +345,14 @@ func aws_get_node_ip(deployment string, node string) string {
 	defaultConfig := parse_yaml("/px-deploy/.px-deploy/defaults.yml")
 	config.Aws_Access_Key_Id = defaultConfig.Aws_Access_Key_Id
 	config.Aws_Secret_Access_Key = defaultConfig.Aws_Secret_Access_Key
+	config.Aws_Session_Token = defaultConfig.Aws_Session_Token
 
 	// connect to aws API
 	cfg, err := awscfg.LoadDefaultConfig(
 		context.TODO(),
 		//awscfg.WithRetryer(func() aws.Retryer { return retry.AddWithMaxAttempts(retry.NewStandard(), 15) }),
 		awscfg.WithRegion(config.Aws_Region),
-		awscfg.WithCredentialsProvider(awscredentials.NewStaticCredentialsProvider(config.Aws_Access_Key_Id, config.Aws_Secret_Access_Key, "")))
+		awscfg.WithCredentialsProvider(awscredentials.NewStaticCredentialsProvider(config.Aws_Access_Key_Id, config.Aws_Secret_Access_Key, config.Aws_Session_Token)))
 	if err != nil {
 		panic("aws configuration error, " + err.Error())
 	}
@@ -386,7 +390,15 @@ func aws_get_node_ip(deployment string, node string) string {
 
 	if len(instances.Reservations) == 1 {
 		if len(instances.Reservations[0].Instances) == 1 {
-			output = []byte(*instances.Reservations[0].Instances[0].PublicIpAddress)
+			instance := instances.Reservations[0].Instances[0]
+			// Prefer public IP if available, otherwise use private IP (for existing VPC deployments)
+			if instance.PublicIpAddress != nil {
+				output = []byte(*instance.PublicIpAddress)
+			} else if instance.PrivateIpAddress != nil {
+				output = []byte(*instance.PrivateIpAddress)
+			} else {
+				output = []byte("")
+			}
 		} else {
 			// no [or multiple] instances found
 			output = []byte("")
@@ -785,12 +797,19 @@ func terminate_and_wait_nodegroup(eksclient *eks.Client, nodegroupName string, c
 }
 
 func aws_show_iamkey_age(config *Config) {
+	// Skip IAM key age check if using temporary credentials (session token)
+	// Temporary credentials don't have a username and can't be queried via ListAccessKeys
+	if config.Aws_Session_Token != "" {
+		return
+	}
+
 	cfg := aws_load_config(config)
 	iamclient := iam.NewFromConfig(cfg)
 	iamKeys, err := iamclient.ListAccessKeys(context.TODO(), &iam.ListAccessKeysInput{})
 
 	if err != nil {
 		fmt.Printf("Error getting information about AWS IAM key age: %s \n", err.Error())
+		return
 	}
 
 	for _, iamKey := range iamKeys.AccessKeyMetadata {

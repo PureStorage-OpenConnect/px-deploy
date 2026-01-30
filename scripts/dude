@@ -27,6 +27,7 @@ install_backup() {
   BACKUP_POD_IP=$(kubectl get pods -n central -l app=px-backup -o jsonpath='{.items[*].status.podIP}' 2>/dev/null)
   AWS_ACCESS_KEY=$(sed -n 's/aws_access_key_id[ =]*//p' /root/.aws/credentials 2>/dev/null)
   AWS_SECRET_KEY=$(sed -n 's/aws_secret_access_key[ =]*//p' /root/.aws/credentials 2>/dev/null)
+  AWS_SESSION_TOKEN=$(sed -n 's/aws_session_token[ =]*//p' /root/.aws/credentials 2>/dev/null)
   client_secret=$(kubectl get secret --namespace central pxc-backup-secret -o jsonpath={.data.OIDC_CLIENT_SECRET} | base64 --decode)
   pxbackupctl login -s http://$pubIP:$backupPort -u admin -p admin
   pxbackupctl create cloudcredential --aws-access-key $AWS_ACCESS_KEY --aws-secret-key $AWS_SECRET_KEY -e $BACKUP_POD_IP:10002 --orgID default -n s3 -p aws
@@ -85,6 +86,7 @@ if [ $[2*$[$cluster/2]] -eq $cluster ]; then
   UUID=$(kubectl get stc -n portworx -o jsonpath='{.items[].status.clusterUid}')
   AWS_ACCESS_KEY=$(sed -n 's/aws_access_key_id[ =]*//p' /root/.aws/credentials 2>/dev/null | head -1)
   AWS_SECRET_KEY=$(sed -n 's/aws_secret_access_key[ =]*//p' /root/.aws/credentials 2>/dev/null | head -1)
+  AWS_SESSION_TOKEN=$(sed -n 's/aws_session_token[ =]*//p' /root/.aws/credentials 2>/dev/null | head -1)
   echo "Creating bucket '$DR_BUCKET' in region 'us-east-1', if it does not exist"
   aws s3 mb s3://$DR_BUCKET --region us-east-1
   BUCKET_REGION=$(aws s3api get-bucket-location --bucket $DR_BUCKET --output text)
