@@ -91,6 +91,7 @@ fi
 echo "LC_TIME=en_GB" >/etc/environment
 hostnamectl set-hostname $(getent hosts $(hostname -I) | awk '{print$2}')
 dnf -y update openssh
+sed -i '/pam_wheel.so use_uid/s/^#//' /etc/pam.d/su
 passwd --stdin root <<<portworx
 systemctl stop firewalld 2>/dev/null
 systemctl disable firewalld 2>/dev/null
