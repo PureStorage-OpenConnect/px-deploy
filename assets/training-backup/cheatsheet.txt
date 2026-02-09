@@ -1,12 +1,12 @@
-kubectl exec $POD -n postgres -- createdb pxdemo
+kubectl exec deploy/postgres -n postgres -- createdb pxdemo
 
-kubectl exec $POD -n postgres -- psql -l
+kubectl exec deploy/postgres -n postgres -- psql -l
 
-kubectl exec $POD -n postgres -- pgbench -i -s 50 pxdemo
+kubectl exec deploy/postgres -n postgres -- pgbench -i -s 50 pxdemo
 
-kubectl exec $POD -n postgres -- psql pxdemo -c 'select count(*) from pgbench_accounts'
+kubectl exec deploy/postgres -n postgres -- psql pxdemo -c 'select count(*) from pgbench_accounts'
 
-kubectl exec $POD -n postgres -- psql -c 'drop database pxdemo'
+kubectl exec deploy/postgres -n postgres -- psql -c 'drop database pxdemo'
 
 mongosh --host localhost --port 27017 --eval 'db.adminCommand({ fsync: 1, lock: true })'
 
