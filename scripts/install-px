@@ -142,7 +142,7 @@ done
 kubectl apply -f /tmp/px.yml
 
 # Install px cli
-curl -L -o /tmp/pxcli.tgz https://mirrors.portworx.com/packages/px-cli/latest/px-v1.0.0.linux.amd64.tar.gz
+curl -L -o /tmp/pxcli.tgz https://mirrors.portworx.com/packages/px-cli/v1.0.0/px-v1.0.0.linux.amd64.tar.gz
 tar -xzf /tmp/pxcli.tgz  -C /tmp/
 chmod +x /tmp/px/bin/px* 
 cp /tmp/px/bin/* /usr/local/bin/
