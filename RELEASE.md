@@ -1,8 +1,10 @@
+# 6.6.1
 ##Fixes
 * fix vSphere issue when one or more nodes is slow to provision
 * provision worker nodes by default rather than just k8s
 
 ##Improvements
+* validate metro-dr on ocp4
 * remove stop_after parameter
 * simplify aws-load-balancer-controller installation
 * simplify and speed up provisioning
