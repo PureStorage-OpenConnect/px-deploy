@@ -88,7 +88,6 @@ spec:
   name: portworx-certified
   source: certified-operators
   sourceNamespace: openshift-marketplace
-  startingCSV: portworx-operator.v25.4.0
 ---
 apiVersion: v1
 kind: ConfigMap
