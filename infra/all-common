@@ -57,13 +57,60 @@ EOF
 systemctl restart sshd 2>/dev/null
 
 if [ $cloud = "aws" -o $cloud = "gcp" -o $cloud = "azure" ]; then
-  echo 127.0.0.1 localhost >/etc/hosts
-  for i in $(seq 1 $clusters); do
-    echo 192.168.$[100+$i].90 master-$i >>/etc/hosts
-    for j in $(seq 1 ${clusternodes[$i]}); do
-      echo 192.168.$[100+$i].$[100+$j] node-$i-$j >>/etc/hosts
+  # Check if using existing VPC (dynamic IPs) - query AWS API like vSphere does
+  if [ $cloud = "aws" ] && [ -n "$aws_existing_vpc_id" ]; then
+    # Install unzip if not present (required for AWS CLI installation)
+    if ! command -v unzip &> /dev/null; then
+      while ! dnf install -y unzip; do sleep 1; done
+    fi
+
+    # Install AWS CLI if not present
+    if ! command -v aws &> /dev/null; then
+      curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "/tmp/awscliv2.zip"
+      unzip -q /tmp/awscliv2.zip -d /tmp
+      /tmp/aws/install
+    fi
+
+    # Configure AWS credentials
+    mkdir -p /root/.aws
+    cp /tmp/credentials /root/.aws/credentials
+
+    # Wait for all instances to be running and query their IPs
+    while :; do
+      sleep 1
+      rm -f /tmp/hosts
+
+      # Query EC2 for all instances with our pxd_uuid tag
+      instances=$(aws ec2 describe-instances \
+        --region $aws_region \
+        --filters "Name=tag:pxd_uuid,Values=$pxd_uuid" \
+                  "Name=instance-state-name,Values=running" \
+        --query 'Reservations[].Instances[].[PrivateIpAddress,Tags[?Key==`Name`].Value|[0]]' \
+        --output text)
+
+      # Build hosts file
+      echo "$instances" | while read ip hostname; do
+        echo "$ip $hostname" >>/tmp/hosts
+      done
+
+      # Check if we have all expected instances (master + nodes for all clusters)
+      expected_count=$[($nodes+1)*$clusters]
+      actual_count=$(cat /tmp/hosts 2>/dev/null | wc -l)
+      [ "$actual_count" -eq "$expected_count" ] && break
     done
-  done
+
+    echo 127.0.0.1 localhost >/etc/hosts
+    cat /tmp/hosts >>/etc/hosts
+  else
+    # Use static IPs (for new VPC or GCP/Azure)
+    echo 127.0.0.1 localhost >/etc/hosts
+    for i in $(seq 1 $clusters); do
+      echo 192.168.$[100+$i].90 master-$i >>/etc/hosts
+      for j in $(seq 1 ${clusternodes[$i]}); do
+        echo 192.168.$[100+$i].$[100+$j] node-$i-$j >>/etc/hosts
+      done
+    done
+  fi
 elif [ $cloud = "vsphere" ]; then
   curl -Ls https://github.com/vmware/govmomi/releases/download/v0.52.0/govc_Linux_x86_64.tar.gz | tar -xzf - -C /usr/bin/
   chmod 755 /usr/bin/govc

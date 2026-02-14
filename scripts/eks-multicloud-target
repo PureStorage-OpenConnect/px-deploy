@@ -28,6 +28,7 @@ done
 UUID=$(kubectl get stc -n portworx -o jsonpath='{.items[].status.clusterUid}')
 S3_ACCESS_KEY=$(sed -n 's/aws_access_key_id[ =]*//p' /root/.aws/credentials 2>/dev/null | head -1)
 S3_SECRET_KEY=$(sed -n 's/aws_secret_access_key[ =]*//p' /root/.aws/credentials 2>/dev/null | head -1)
+S3_SESSION_TOKEN=$(sed -n 's/aws_session_token[ =]*//p' /root/.aws/credentials 2>/dev/null | head -1)
 
 S3_BUCKET_REGION=$(aws s3api get-bucket-location --bucket $DR_BUCKET --output text)
 # Region us-east-1 returns "None" instead of the region name

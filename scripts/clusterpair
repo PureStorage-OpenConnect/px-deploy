@@ -3,6 +3,7 @@
 
 AWS_ACCESS_KEY=$(sed -n 's/aws_access_key_id[ =]*//p' /root/.aws/credentials 2>/dev/null | head -1)
 AWS_SECRET_KEY=$(sed -n 's/aws_secret_access_key[ =]*//p' /root/.aws/credentials 2>/dev/null | head -1)
+AWS_SESSION_TOKEN=$(sed -n 's/aws_session_token[ =]*//p' /root/.aws/credentials 2>/dev/null | head -1)
 
 echo "Creating bucket '$DR_BUCKET' in region 'us-east-1', if it does not exist"
 aws s3 mb s3://$DR_BUCKET --region us-east-1
