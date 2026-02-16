@@ -1,0 +1,11 @@
+apiVersion: stork.libopenstorage.org/v1alpha1
+kind: Rule
+metadata:
+  name: px-mysql-postsnap-rule
+  namespace: mysql
+rules:
+  - podSelector:
+      app: mysql
+    actions:
+    - type: command
+      value: mysql --user=root --password=$MYSQL_ROOT_PASSWORD -Bse 'FLUSH LOGS; UNLOCK TABLES;'

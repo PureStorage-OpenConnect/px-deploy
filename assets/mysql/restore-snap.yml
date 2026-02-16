@@ -1,0 +1,9 @@
+#replace existing pv with snapshot
+apiVersion: stork.libopenstorage.org/v1alpha1
+kind: VolumeSnapshotRestore
+metadata:
+  name: mysql-snap-inrestore
+  namespace: mysql
+spec:
+  sourceName: mysql-snap
+  sourceNamespace: mysql
