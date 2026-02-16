@@ -1,7 +1,13 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: mysql
+---
 kind: PersistentVolumeClaim
 apiVersion: v1
 metadata:
    name: px-mysql-pvc
+   namespace: mysql
 spec:
    storageClassName: px-csi-db
    accessModes:
@@ -14,6 +20,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: mysql
+  namespace: mysql
 spec:
   selector:
     matchLabels:
@@ -32,7 +39,7 @@ spec:
       schedulerName: stork
       containers:
       - name: mysql
-        image: mysql:5.7.33
+        image: mysql:9.2.0
         imagePullPolicy: "IfNotPresent"
         ports:
         - containerPort: 5432
