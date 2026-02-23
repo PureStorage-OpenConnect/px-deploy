@@ -1,0 +1,39 @@
+# pxctl volume update --max_bandwidth 10,10 <vol_id>
+# best to leverage the grafana dashboard to show IO Limits
+# https://docs.portworx.com/portworx-enterprise/operations/tune-performance/io-throttling
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: diskfiller
+spec:
+  serviceName: diskfiller
+  replicas: 1
+  selector:
+    matchLabels:
+      app: diskfiller
+  template:
+    metadata:
+      labels:
+        app: diskfiller
+    spec:
+      containers:
+      - name: diskfiller
+        image: alpine:3.23
+        command:
+          - sh
+          - -c
+          - "while :; do tr '\\0' 'X' < /dev/zero | dd of=/scratch/foo bs=8192; sleep 1; done"
+        volumeMounts:
+        - name: scratch
+          mountPath: /scratch
+      restartPolicy: Always
+  volumeClaimTemplates:
+   - metadata:
+       name: scratch
+     spec:
+       storageClassName: px-csi-db
+       accessModes:
+       - ReadWriteOnce
+       resources:
+         requests:
+           storage: 10G
