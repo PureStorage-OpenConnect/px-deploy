@@ -306,7 +306,7 @@ func vsphere_check_templateversion(deployment string) {
 		return
 	}
 	if rt != lt {
-		fmt.Printf("%s px-deploy template (current version %s) update available (version %s).\nPlease run px-deploy vsphere-init to update%s \n", Yellow, lt, rt, Reset)
+		fmt.Printf("%s px-deploy template (current version %s) update available (version %s).\nYou need to run 'px-deploy vsphere-init' to update and re-create your deployment%s \n", Red, lt, rt, Reset)
 	} else {
 		fmt.Printf("%s Info: local px-deploy template up-to-date (Version %s)%s \n", Green, lt, Reset)
 	}
