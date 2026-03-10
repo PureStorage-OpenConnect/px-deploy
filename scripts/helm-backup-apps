@@ -123,7 +123,7 @@ fi
 
 cat <<EOF >> /etc/motd
 +================================================+
-SAVE THE FOLLOWING DETAILS FOR FUTURE REFERENCES
+SAVE THE FOLLOWING DETAILS FOR FUTURE REFERENCE
 +================================================+
 PX-Central User Interface Access URL : http://$PXB_URL
 PX-Central admin user name: admin
