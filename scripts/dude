@@ -5,22 +5,7 @@ install_backup() {
   authIP=$backupIP
   authPort=$(kubectl get svc px-central-ui -n central -o=jsonpath='{.spec.ports[?(@.port==80)].nodePort}')
   sleep 5
-  kubectl apply -f - <<EOF
-apiVersion: v1
-kind: Service
-metadata:
-  name: px-backup-api-grpc
-  namespace: central
-spec:
-  ports:
-  - name: grpc
-    port: 10002
-    protocol: TCP
-    targetPort: 10002
-  selector:
-    app: px-backup
-  type: NodePort
-EOF
+  kubectl apply -f /assets/dude/grpc-service.yaml
   backupPort=$(kubectl get svc px-backup-api-grpc -n central -o=jsonpath='{.spec.ports[?(@.port==10002)].nodePort}')
   px pxb init config  --px-backup-api-url http://$backupIP:$backupPort --pxcentral-auth-url http://$authIP:$authPort
   px pxb set config --pxcentral-verify-ssl false
@@ -55,79 +40,32 @@ install_dr() {
   echo Mode is $MODE
 
   while : ; do
+    scp master-$[$cluster+1]:/root/.kube/config /tmp/dest_kubeconfig
     storkctl create clusterpair remotecluster --namespace kube-system $LOCAL_EP $REMOTE_EP --dest-kube-file /tmp/dest_kubeconfig --src-kube-file /root/.kube/config --provider s3 --s3-endpoint s3.amazonaws.com --s3-access-key $AWS_ACCESS_KEY --s3-secret-key $AWS_SECRET_KEY --s3-region $BUCKET_REGION  --bucket $DR_BUCKET --mode $MODE && break
     sleep 5
   done
+
+  kubectl apply -f /assets/dude/async-dr.yaml
 }
 
-odd_cluster() {
-  kubectl delete ns central &
-  cat <<EOF >/tmp/async-dr.yml
-apiVersion: stork.libopenstorage.org/v1alpha1
-kind: SchedulePolicy
-metadata:
-  name: drpolicy
-policy:
-  interval:
-    intervalMinutes: 2
----
-apiVersion: stork.libopenstorage.org/v1alpha1
-kind: MigrationSchedule
-metadata:
-  name: appmigrationschedule
-  namespace: kube-system
-spec:
-  template:
-    spec:
-      clusterPair: remotecluster-$[$cluster+1]
-      includeResources: true
-      startApplications: false
-      namespaces:
-      - petclinic
-  schedulePolicyName: drpolicy
-EOF
-  while : ; do
-    scp /tmp/async-dr.yml master-1:/home/training$cluster/yaml/async-dr.yml
-    ssh -oConnectTimeout=1 -oStrictHostKeyChecking=no master-1 "chown training$cluster.training$cluster /home/training$cluster/yaml/async-dr.yml ; kubectl apply --kubeconfig /home/training$cluster/.kube/config -f /home/training$cluster/yaml/async-dr.yml"
-    [ $? -eq 0 ] && break
-    sleep 5
-  done
-}
-
+# Set up users on cluster 1
 if [ $cluster -eq 1 ]; then
   mkdir /etc/skel/.kube /etc/skel/yaml
-  cp /assets/petclinic/petclinic.yml /etc/skel/yaml
-  cat <<EOF >>/etc/skel/.bashrc
-alias k=kubectl
-complete -F __start_kubectl k
-PS1='\e[0;33m[\u@px-training \W]\$ \e[m'
-EOF
+  cp /assets/petclinic/petclinic.yml /assets/dude/async-dr.yaml /etc/skel/yaml
+  cp /assets/dude/bashrc /etc/skel/.bashrc
   for i in $(seq 1 $clusters); do
     useradd training$i
     passwd --stdin training$i <<<portworx
-  done
-  for i in $(seq 1 $clusters); do
     scp master-$i:/root/.kube/config /tmp/kubeconfig.$i
     install -o training$i -g training$i /tmp/kubeconfig.$i /home/training$i/.kube/config
   done
-  cat <<\EOF >/etc/profile.d/ui.sh
-if [ $UID -gt 1000 ]; then
-  n=$(echo $USER | sed s/training//)
-  [ $[2*$[$n/2]] -ne $n ] && n=$[$n+1]
-  export KUBECONFIG=/tmp/kubeconfig.$n
-  ADMIN_PW=$(kubectl get secret pxcentral-keycloak-http -n central -o jsonpath="{.data.password}" | base64 --decode)
-  PXB_URL=$(kubectl get svc px-backup-ui -n central -o=jsonpath='{.status.loadBalancer.ingress[0].hostname}')
-  echo Portworx Backup UI: http://$PXB_URL/
-  echo Portworx Backup username: admin
-  echo Portworx Backup password: $ADMIN_PW
-fi
-EOF
+  cp /assets/dude/ui.sh /etc/profile.d/ui.sh
 fi
 
 export cluster
 if [ $[2*$[$cluster/2]] -eq $cluster ]; then
   install_backup
-  install_dr
 else
-  odd_cluster
+  kubectl delete ns central &
+  install_dr
 fi

@@ -1,0 +1,22 @@
+apiVersion: stork.libopenstorage.org/v1alpha1
+kind: SchedulePolicy
+metadata:
+  name: drpolicy
+policy:
+  interval:
+    intervalMinutes: 2
+---
+apiVersion: stork.libopenstorage.org/v1alpha1
+kind: MigrationSchedule
+metadata:
+  name: appmigrationschedule
+  namespace: kube-system
+spec:
+  template:
+    spec:
+      clusterPair: remotecluster
+      includeResources: true
+      startApplications: false
+      namespaces:
+      - petclinic
+  schedulePolicyName: drpolicy
