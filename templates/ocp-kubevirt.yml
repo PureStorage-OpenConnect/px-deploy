@@ -9,7 +9,7 @@ cloud: "aws"
 clusters: 2
 cluster:
   - id: 1
-    scripts: [ "kubevirt-apps", "helm-backup", "helm-backup-apps"]
+    scripts: [ "kubevirt-apps", "helm-backup", "helm-backup-postinstall"]
   - id: 2
     scripts: ["clusterpair"]
 env:
