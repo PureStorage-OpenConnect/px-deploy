@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: central
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: pxc-credentials
+  namespace: central
+data:
+  mongodb-px-backup-password: UDBydHdvcnhCYWNrdXA=
+  mongodb-root-password: UDBydHdvcnhCYWNrdXA=
+  mongodb-replica-set-key: UDBydHdvcnhCYWNrdXA=
+  postgresql-password: UDBydHdvcnhCYWNrdXA=
+  mysql-password: UDBydHdvcnhCYWNrdXA=

@@ -1,0 +1,14 @@
+kind: Route
+apiVersion: route.openshift.io/v1
+metadata:
+  name: px-backup-ui
+  namespace: central
+spec:
+  to:
+    kind: Service
+    name: px-backup-ui
+    weight: 100
+  port:
+    targetPort: http
+  wildcardPolicy: None
+  

@@ -1,0 +1,32 @@
+AWS_ACCESS_KEY=$(sed -n 's/aws_access_key_id[ =]*//p' /root/.aws/credentials 2>/dev/null)
+AWS_SECRET_KEY=$(sed -n 's/aws_secret_access_key[ =]*//p' /root/.aws/credentials 2>/dev/null)
+
+ADMIN_PW=$(kubectl get secret pxcentral-keycloak-http -n central -o jsonpath="{.data.password}" | base64 --decode)
+
+px pxb create cloudcredential --name aws-credential --provider aws --aws-access-key $AWS_ACCESS_KEY --aws-secret-key $AWS_SECRET_KEY
+px pxb create backuplocation --name s3 --provider s3 --path $BACKUP_BUCKET --cloud-credential-name aws-credential --s3-endpoint s3.amazonaws.com --s3-region $aws_region
+px pxb create schedulepolicy --name 15min-schedule --interval-minutes 15 --interval-retain 12
+
+px pxb connect cluster --name cluster-1 --kubeconfig /root/.kube/config
+
+for i in $(seq 2 $clusters); do
+  ssh master-$i cat /root/.kube/config > /tmp/cluster-$i-kube-config
+  px pxb connect cluster --name cluster-$i --kubeconfig /tmp/cluster-$i-kube-config
+done
+
+if [ "$platform" = ocp4 ]; then
+  PXB_URL=$(kubectl get route px-backup-ui -n central -o json |jq -r ".status.ingress[0].host")
+else
+  PXB_URL=$(kubectl get svc px-backup-ui -n central -o=jsonpath='{.status.loadBalancer.ingress[0].hostname}')
+fi
+
+cat <<EOF >> /etc/motd
++================================================+
+SAVE THE FOLLOWING DETAILS FOR FUTURE REFERENCES
++================================================+
+PX-Central User Interface Access URL : http://$PXB_URL
+PX-Central admin user name: admin
+PX-Central admin user password: $ADMIN_PW
++================================================+
+EOF
+
