@@ -1,21 +1,4 @@
 install_backup() {
-  ADMIN_PW=$(kubectl get secret pxcentral-keycloak-http -n central -o jsonpath="{.data.password}" | base64 --decode)
-  IMDSTOKEN=$(curl -s -X PUT 'http://169.254.169.254/latest/api/token' -H 'X-aws-ec2-metadata-token-ttl-seconds: 120')
-  backupIP=$(curl -H "X-aws-ec2-metadata-token: $IMDSTOKEN" -s http://169.254.169.254/latest/meta-data/public-ipv4)
-  authIP=$backupIP
-  authPort=$(kubectl get svc px-central-ui -n central -o=jsonpath='{.spec.ports[?(@.port==80)].nodePort}')
-  sleep 5
-  kubectl apply -f /assets/dude/grpc-service.yaml
-  backupPort=$(kubectl get svc px-backup-api-grpc -n central -o=jsonpath='{.spec.ports[?(@.port==10002)].nodePort}')
-  px pxb init config  --px-backup-api-url http://$backupIP:$backupPort --pxcentral-auth-url http://$authIP:$authPort
-  px pxb set config --pxcentral-verify-ssl false
-  px pxb login --username admin --password $ADMIN_PW
-
-  while ! px pxb version; do
-    echo "waiting for grpc availability"
-    sleep 2
-  done
-
   px pxb create cloudcredential --name aws-credential --provider aws --aws-access-key $AWS_ACCESS_KEY --aws-secret-key $AWS_SECRET_KEY
   px pxb create backuplocation --name s3 --provider s3 --path $BACKUP_BUCKET --cloud-credential-name aws-credential --s3-endpoint s3.amazonaws.com --s3-region $aws_region
   px pxb create schedulepolicy --name 15min-schedule --interval-minutes 15 --interval-retain 12
