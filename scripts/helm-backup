@@ -1,24 +1,7 @@
 NAMESPACE=central
-VERSION=2.10.1
+VERSION=2.10.2
 
-kubectl apply -f - <<EOF
-apiVersion: v1
-kind: Namespace
-metadata:
-  name: central
----
-apiVersion: v1
-kind: Secret
-metadata:
-  name: pxc-credentials
-  namespace: central
-data:
-  mongodb-px-backup-password: UDBydHdvcnhCYWNrdXA=
-  mongodb-root-password: UDBydHdvcnhCYWNrdXA=
-  mongodb-replica-set-key: UDBydHdvcnhCYWNrdXA=
-  postgresql-password: UDBydHdvcnhCYWNrdXA=
-  mysql-password: UDBydHdvcnhCYWNrdXA=
-EOF
+kubectl apply -f /assets/helm-backup/namespace.yml
 
 curl -O https://raw.githubusercontent.com/portworx/helm/master/stable/px-central-$VERSION.tgz
 helm install px-central px-central-$VERSION.tgz --namespace $NAMESPACE --create-namespace --version $VERSION --set persistentStorage.enabled=true,persistentStorage.storageClassName="px-csi-db",pxbackup.enabled=true,oidc.centralOIDC.updateAdminProfile=false,installCRDs=true
@@ -44,6 +27,51 @@ kubectl delete job pxcentral-post-install-hook --namespace $NAMESPACE
 helm upgrade px-central px-central-$VERSION.tgz --namespace $NAMESPACE --version $VERSION --reuse-values --set pxmonitor.enabled=true --set pxmonitor.pxCentralEndpoint=$pubIP:$backupPort
 until (kubectl get po -n $NAMESPACE -ljob-name=pxcentral-post-install-hook  -o wide | awk '{print $1, $2, $3}' |grep "Completed"); do echo "Waiting for post install hook";sleep 3; done
 
-#BACKUP_POD_NAME=$(kubectl get pods -n $NAMESPACE -l app=px-backup -o jsonpath='{.items[0].metadata.name}' 2>/dev/null)
-#kubectl cp -n $NAMESPACE $BACKUP_POD_NAME:pxbackupctl/linux/pxbackupctl /usr/bin/pxbackupctl
-#chmod +x /usr/bin/pxbackupctl
+ADMIN_PW=$(kubectl get secret pxcentral-keycloak-http -n central -o jsonpath="{.data.password}" | base64 --decode)
+
+while [ ! -f /usr/local/bin/px ]; do
+  echo "missing px cli. please install manually in /usr/local/bin to proceed"
+  sleep 30
+done
+
+if [ "$platform" = ocp4 ]; then
+  # create ocp route for backup UI
+  kubectl apply -f /assets/helm-backup/ocp-backup-ui-route.yml
+  kubectl apply -f /assets/helm-backup/ocp-central-ui-route.yml
+
+  # expose px-backup service to run pxbackupctl
+  kubectl patch svc px-backup -n central -p '{"spec":{"type":"LoadBalancer"}}'
+  backupIP=$(kubectl get svc px-backup -n central -o json | jq -r ".status.loadBalancer.ingress[0].hostname")
+ 
+  while [ $backupIP = "null" ]; do
+    sleep 2
+    echo "PX Backup grpc LB not assigned"
+    backupIP=$(kubectl get svc px-backup -n central -o json | jq -r ".status.loadBalancer.ingress[0].hostname")
+  done
+  echo "PX Backup grpc LB assigned: $backupIP"
+  
+  backupPort=10002
+  authIP=$(kubectl get route px-central-ui -n central -o json |jq -r ".status.ingress[0].host")
+  authPort=80
+  PXB_URL=$(kubectl get route px-backup-ui -n central -o json |jq -r ".status.ingress[0].host")
+
+else  # platform is k8s on aws
+  IMDSTOKEN=$(curl -s -X PUT 'http://169.254.169.254/latest/api/token' -H 'X-aws-ec2-metadata-token-ttl-seconds: 120')
+  backupIP=$(curl -H "X-aws-ec2-metadata-token: $IMDSTOKEN" -s http://169.254.169.254/latest/meta-data/public-ipv4)
+  authIP=$backupIP
+  authPort=$(kubectl get svc px-central-ui -n central -o=jsonpath='{.spec.ports[?(@.port==80)].nodePort}')
+  #expose px-backup api grpc endpoint
+  kubectl apply -f /assets/helm-backup/backup-grpc-api-svc.yml
+  backupPort=$(kubectl get svc px-backup-api-grpc -n central -o=jsonpath='{.spec.ports[?(@.port==10002)].nodePort}')
+  PXB_URL=$(kubectl get svc px-backup-ui -n central -o=jsonpath='{.status.loadBalancer.ingress[0].hostname}')
+fi
+
+px pxb init config  --px-backup-api-url http://$backupIP:$backupPort --pxcentral-auth-url http://$authIP:$authPort
+px pxb set config --pxcentral-verify-ssl false
+px pxb login --username admin --password $ADMIN_PW
+
+while ! px pxb version; do
+        echo "waiting for grpc availability"
+        sleep 2
+done
+

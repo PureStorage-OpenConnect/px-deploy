@@ -2,7 +2,7 @@ description: A single Kubernetes cluster with Portworx and PX-Backup via Helm in
 clusters: 3
 cluster:
   - id: 1
-    scripts: ["install-px", "helm-backup", "helm-backup-apps"]
+    scripts: ["install-px", "helm-backup", "helm-backup-postinstall"]
     nodes: 4
   - id: 2
     scripts: ["install-px", "petclinic"]

@@ -7,7 +7,7 @@ clusters: 2
 nodes: 5
 cluster:
   - id: 1
-    scripts: ["helm-backup", "helm-backup-apps"]
+    scripts: ["helm-backup", "helm-backup-postinstall"]
   - id: 2
     scripts: ["clusterpair"]
 env:

@@ -1,0 +1,14 @@
+kind: Route
+apiVersion: route.openshift.io/v1
+metadata:
+  name: px-central-ui
+  namespace: central
+spec:
+  to:
+    kind: Service
+    name: px-central-ui
+    weight: 100
+  port:
+    targetPort: http
+  wildcardPolicy: None
+  
