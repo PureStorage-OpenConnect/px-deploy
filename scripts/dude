@@ -1,5 +1,5 @@
 install_backup() {
-  px pxb create cloudcredential --name aws-credential --provider aws --aws-access-key $AWS_ACCESS_KEY --aws-secret-key $AWS_SECRET_KEY
+  px pxb create cloudcredential --name aws-credential --provider aws --aws-access-key $aws_access_key_id --aws-secret-key $aws_secret_access_key
   px pxb create backuplocation --name s3 --provider s3 --path $BACKUP_BUCKET --cloud-credential-name aws-credential --s3-endpoint s3.amazonaws.com --s3-region $aws_region
   px pxb create schedulepolicy --name 15min-schedule --interval-minutes 15 --interval-retain 12
   PXB_URL=$(kubectl get svc px-backup-ui -n central -o=jsonpath='{.status.loadBalancer.ingress[0].hostname}')
@@ -7,9 +7,6 @@ install_backup() {
 }
 
 install_dr() {
-  AWS_ACCESS_KEY=$(sed -n 's/aws_access_key_id[ =]*//p' /root/.aws/credentials 2>/dev/null | head -1)
-  AWS_SECRET_KEY=$(sed -n 's/aws_secret_access_key[ =]*//p' /root/.aws/credentials 2>/dev/null | head -1)
-
   echo "Creating bucket '$DR_BUCKET' in region 'us-east-1', if it does not exist"
   aws s3 mb s3://$DR_BUCKET --region us-east-1
   BUCKET_REGION=$(aws s3api get-bucket-location --bucket $DR_BUCKET --output text)
@@ -23,8 +20,7 @@ install_dr() {
   echo Mode is $MODE
 
   while : ; do
-    scp master-$[$cluster+1]:/root/.kube/config /tmp/dest_kubeconfig
-    storkctl create clusterpair remotecluster --namespace kube-system $LOCAL_EP $REMOTE_EP --dest-kube-file /tmp/dest_kubeconfig --src-kube-file /root/.kube/config --provider s3 --s3-endpoint s3.amazonaws.com --s3-access-key $AWS_ACCESS_KEY --s3-secret-key $AWS_SECRET_KEY --s3-region $BUCKET_REGION  --bucket $DR_BUCKET --mode $MODE && break
+    storkctl create clusterpair remotecluster --namespace kube-system $LOCAL_EP $REMOTE_EP --dest-kube-file /tmp/kubeconfig.$[$cluster+1] --src-kube-file /root/.kube/config --provider s3 --s3-endpoint s3.amazonaws.com --s3-access-key $aws_access_key_id --s3-secret-key $aws_secret_access_key --s3-region $BUCKET_REGION  --bucket $DR_BUCKET --mode $MODE && break
     sleep 5
   done
 
@@ -38,6 +34,13 @@ if [ $cluster -eq 1 ]; then
   cp /assets/dude/bashrc /etc/skel/.bashrc
   for i in $(seq 1 $clusters); do
     useradd training$i
+  done
+  for i in $(seq 1 $clusters); do
+    if [ $[2*$[$i/2]] -eq $i ]; then
+      groupmod -a -U training$[$i-1] training$i
+    else
+      groupmod -a -U training$[$i+1] training$i
+    fi
     passwd --stdin training$i <<<portworx
     scp master-$i:/root/.kube/config /tmp/kubeconfig.$i
     install -o training$i -g training$i /tmp/kubeconfig.$i /home/training$i/.kube/config
