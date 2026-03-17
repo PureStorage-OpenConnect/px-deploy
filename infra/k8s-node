@@ -1,4 +1,4 @@
-dnf install -y kernel-devel sg3_utils device-mapper-multipath iscsi-initiator-utils &
+dnf install -y sg3_utils device-mapper-multipath iscsi-initiator-utils &
 ctr -n k8s.io images pull docker.io/$(curl -sk "https://install.portworx.com/$px_version?comp=pxoperator&kbver=$k8s_version" | awk '/image:/{print$2}') &
 ctr -n k8s.io images pull docker.io/portworx/px-enterprise:$px_version &
 ctr -n k8s.io images pull docker.io/portworx/oci-monitor:$px_version &
