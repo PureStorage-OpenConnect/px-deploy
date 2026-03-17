@@ -44,7 +44,6 @@ spec:
       labels:
         app: cassandra
     spec:
-      schedulerName: stork
       containers:
       - name: cassandra
         image: cassandra:3

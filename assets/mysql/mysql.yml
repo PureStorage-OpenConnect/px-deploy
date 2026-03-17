@@ -36,7 +36,6 @@ spec:
       labels:
         app: mysql
     spec:
-      schedulerName: stork
       containers:
       - name: mysql
         image: mysql:9.2.0

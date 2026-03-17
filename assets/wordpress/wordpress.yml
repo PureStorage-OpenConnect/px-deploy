@@ -59,8 +59,6 @@ spec:
         app: wordpress
         tier: frontend
     spec:
-      # Use the stork scheduler to enable more efficient placement of the pods
-      schedulerName: stork
       containers:
       - image: wordpress:4.8-apache
         name: wordpress
@@ -138,8 +136,6 @@ spec:
         app: wordpress
         tier: mysql
     spec:
-      # Use the stork scheduler to enable more efficient placement of the pods
-      schedulerName: stork
       containers:
       - image: mysql:5.6
         imagePullPolicy: 

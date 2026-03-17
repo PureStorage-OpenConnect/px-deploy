@@ -53,7 +53,6 @@ spec:
       labels:
         app: postgres
     spec:
-      schedulerName: stork
       containers:
       - name: postgres
         image: postgres:9.5

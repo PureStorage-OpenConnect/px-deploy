@@ -38,8 +38,6 @@ spec:
       labels:
         app: cassandra
     spec:
-      # Use the stork scheduler to enable more efficient placement of the pods
-      schedulerName: stork
       containers:
       - name: cassandra
         image: gcr.io/google-samples/cassandra:v14

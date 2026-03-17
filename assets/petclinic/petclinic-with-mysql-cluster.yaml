@@ -82,7 +82,6 @@ spec:
       labels:
         app: petclinic
     spec:
-      schedulerName: stork
       containers:
       - name: petclinic
         image: springdeveloper/spring-petclinic:2.0.0.BUILD-SNAPSHOT
@@ -192,7 +191,6 @@ spec:
           subPath: mysql
         - name: conf
           mountPath: /etc/mysql/conf.d
-      schedulerName: stork
       containers:
       - name: mysql
         image: mysql:5.7
