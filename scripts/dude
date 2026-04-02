@@ -20,6 +20,7 @@ install_dr() {
   echo Mode is $MODE
 
   while : ; do
+    scp master-$[$cluster+1]:/root/.kube/config /tmp/kubeconfig.$[$cluster+1]
     storkctl create clusterpair remotecluster --namespace kube-system $LOCAL_EP $REMOTE_EP --dest-kube-file /tmp/kubeconfig.$[$cluster+1] --src-kube-file /root/.kube/config --provider s3 --s3-endpoint s3.amazonaws.com --s3-access-key $aws_access_key_id --s3-secret-key $aws_secret_access_key --s3-region $BUCKET_REGION  --bucket $DR_BUCKET --mode $MODE && break
     sleep 5
   done
@@ -30,10 +31,11 @@ install_dr() {
 # Set up users on cluster 1
 if [ $cluster -eq 1 ]; then
   mkdir /etc/skel/.kube /etc/skel/yaml
-  cp /assets/petclinic/petclinic.yml /assets/dude/async-dr.yaml /etc/skel/yaml
+  cp /assets/dude/petclinic.yaml /assets/dude/async-dr.yaml /etc/skel/yaml
   cp /assets/dude/bashrc /etc/skel/.bashrc
   for i in $(seq 1 $clusters); do
     useradd training$i
+    chmod g+x /home/training$i
   done
   for i in $(seq 1 $clusters); do
     if [ $[2*$[$i/2]] -eq $i ]; then
