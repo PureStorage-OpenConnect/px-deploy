@@ -113,7 +113,7 @@ kubectl get ns
 9. In cluster 1, provision the Petclinic app:
 
 ```
-kubectl apply -f /assets/petclinic/petclinic.yml
+kubectl apply -f /assets/petclinic/petclinic.yaml
 ```
 
 Talk about how it is a stateless Java app backed by a MySQL data, which itself is backed by a Portworx volume:
