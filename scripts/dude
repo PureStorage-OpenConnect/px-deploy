@@ -54,6 +54,6 @@ export cluster
 if [ $[2*$[$cluster/2]] -eq $cluster ]; then
   install_backup
 else
-  kubectl delete ns central &
+  helm delete -n central px-central &
   install_dr
 fi
