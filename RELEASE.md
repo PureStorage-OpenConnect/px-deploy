@@ -1,3 +1,7 @@
+##Improvements
+* Refactor PX-Backup scripts
+* Refactor dude scripts
+
 # 6.6.1
 ##Fixes
 * fix vSphere issue when one or more nodes is slow to provision

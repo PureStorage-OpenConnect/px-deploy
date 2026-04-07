@@ -1,6 +1,6 @@
 # Apply Petclinic and Minio in separate namespaces
 kubectl apply -f /assets/minio/minio-deployment.yml
-kubectl apply -f /assets/petclinic/petclinic.yml
+kubectl apply -f /assets/petclinic/petclinic.yaml
 
 # Setup Minio Endpoint
 ip=`curl -s https://ipinfo.io/ip`

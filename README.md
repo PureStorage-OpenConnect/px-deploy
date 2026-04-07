@@ -211,7 +211,7 @@ This example is a mixture of both methods. The template is applied, then the com
 ```
 $ cat ~/.px-deploy/scripts/petclinic
 # Install petclinic on each cluster
-kubectl apply -f /assets/petclinic.yml
+kubectl apply -f /assets/petclinic.yaml
 ```
 
 These variables are passed to the script:

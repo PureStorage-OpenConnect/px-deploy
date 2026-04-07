@@ -4,4 +4,4 @@ px_version: 3.5.2
 k8s_version: 1.33.5
 cluster:
   - id: 1
-    scripts: ["install-awscli", "etcd", "wetty", "snoop", "training-bastion"]
+    scripts: ["install-awscli", "etcd", "snoop", "training-bastion", "wetty" ]

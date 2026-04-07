@@ -1,7 +1,9 @@
 description: Deploys clusters with Portworx, sets up and configures a cluster pairing from odd to even clusters, configures an async DR schedule, installs PX-Backup on the last cluster
 px_version: 3.5.2.1
 k8s_version: 1.33.5
+run_predelete: true
 cloud: aws
+aws_type: t3.xlarge
 clusters: 2
 scripts: ["install-awscli", "install-px", "licenses", "helm-backup", "dude"]
 cluster:

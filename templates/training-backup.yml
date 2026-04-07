@@ -5,5 +5,5 @@ k8s_version: 1.33.5
 scripts: ["install-px", "training-backup-cluster"]
 cluster:
   - id: 1
-    scripts: ["install-awscli", "wetty", "snoop", "helm-backup", "training-backup-bastion"]
+    scripts: ["install-awscli", "snoop", "helm-backup", "training-backup-bastion", "wetty" ]
     nodes: 4

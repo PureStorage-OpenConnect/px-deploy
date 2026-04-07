@@ -93,8 +93,8 @@ metadata:
   name: wetty
   namespace: wetty
   annotations:
-    service.beta.kubernetes.io/aws-load-balancer-type: "nlb"
-    external-dns.alpha.kubernetes.io/hostname: $name.$ocp4_domain
+    service.beta.kubernetes.io/aws-load-balancer-type: "external"
+    external-dns.alpha.kubernetes.io/hostname: $name-wetty.$ocp4_domain
 spec:
   type: LoadBalancer
   selector:
@@ -104,6 +104,11 @@ spec:
     port: 443
     targetPort: 3000
 EOF
+
+TOKEN=$(curl -s -X PUT 'http://169.254.169.254/latest/api/token' -H 'X-aws-ec2-metadata-token-ttl-seconds: 120')
+IP=$(curl -H "X-aws-ec2-metadata-token: $TOKEN" -s http://169.254.169.254/latest/meta-data/public-ipv4)
+ZONE_ID=$(aws route53 list-hosted-zones --query "HostedZones[?Name=='$ocp4_domain.'].Id" --output text | cut -d/ -f3)
+aws route53 change-resource-record-sets --hosted-zone-id "$ZONE_ID" --change-batch "{\"Changes\":[{\"Action\":\"UPSERT\",\"ResourceRecordSet\":{\"Name\":\"$name-ssh.$ocp4_domain.\",\"Type\":\"A\",\"TTL\":300,\"ResourceRecords\":[{\"Value\":\"$IP\"}]}}]}"
 
 cat <<\EOF >/px-deploy/script-delete/wetty.sh
 #!/usr/bin/bash
@@ -121,13 +126,9 @@ ZONE_ID=$(aws route53 list-hosted-zones \
 [[ -z "$ZONE_ID" ]] && { echo "Hosted zone not found"; exit 1; }
 
 CHANGES=$(aws route53 list-resource-record-sets --hosted-zone-id "$ZONE_ID" \
-  | jq --arg d "$DOMAIN" --arg n "$NAME" '
+  | jq --arg pat "^(cname-)?$NAME-(wetty|ssh)\.$DOMAIN" '
     .ResourceRecordSets
-    | map(select(
-        .Name == ($n + "." + $d)
-        or
-        .Name == ("cname-" + $n + "." + $d)
-      ))
+    | map(select(.Name | test($pat)))
     | map({Action:"DELETE",ResourceRecordSet:.})
   ')
 
