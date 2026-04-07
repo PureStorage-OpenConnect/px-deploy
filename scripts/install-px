@@ -190,7 +190,7 @@ elif [ $platform = ocp4 ]; then
   sed -i "s/<BEARER_TOKEN>/$OCP_TOKEN/" /assets/grafana/grafana-datasource-ocp.yaml
   oc -n portworx create configmap grafana-source-config --from-file=/assets/grafana/grafana-datasource-ocp.yaml
   oc -n portworx apply -f /assets/grafana/grafana-ocp.yaml
-  oc expose service px-grafana -n portworx
+  oc expose service grafana -n portworx
 fi
 
 # install storkctl
