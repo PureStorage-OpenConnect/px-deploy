@@ -51,10 +51,10 @@ if [ "$journal" ]; then
   url="$url&j=$journal"
 fi
 
-if [ "$promop" = false ]; then
-  url="$url&promop=false"
+if [ "$promop" = false ] || [ "$platform" = ocp4 ]; then
+  url="$url&promop=false&mon=true"
 else 
-  url="$url&promop=true"
+  url="$url&promop=true&mon=true"
 fi
 
 [ "$px_suffix" ] && url="$url&$px_suffix"
@@ -165,16 +165,32 @@ if [ $platform = ocp4 ]; then
   kubectl patch console.operator cluster --type json -p '[{"op": "add", "path": "/spec/plugins/-", "value": "portworx"}]'
 fi
 
-# Install Grafana
-kubectl patch StorageCluster $STC -n portworx --type merge --patch '{"spec": {"monitoring": {"grafana": {"enabled": true}}}}'
+# configure monitoring
+kubectl -n portworx create configmap grafana-dashboards \
+--from-file=/assets/grafana/portworx-cluster-dashboard.json \
+--from-file=/assets/grafana/portworx-performance-dashboard.json \
+--from-file=/assets/grafana/portworx-node-dashboard.json \
+--from-file=/assets/grafana/portworx-volume-dashboard.json \
+--from-file=/assets/grafana/portworx-etcd-dashboard.json  \
+--from-file=/assets/grafana/portworx-dr-dashboard.json
+kubectl -n portworx create configmap grafana-dashboard-config --from-file=/assets/grafana/grafana-dashboard-config.yaml
+
 if [ $platform = k8s ]; then
-  kubectl create service nodeport grafana -n portworx --tcp=3000:3000 --node-port 30112
+  kubectl -n portworx create configmap grafana-source-config --from-file=/assets/grafana/grafana-datasource.yaml
+  kubectl -n portworx apply -f /assets/grafana/node-exporter.yaml
+  kubectl -n portworx apply -f /assets/grafana/node-exporter-svc.yaml
+  kubectl -n portworx apply -f /assets/grafana/node-exporter-servicemonitor.yaml
+  kubectl -n portworx apply -f /assets/grafana/grafana.yaml
 elif [ $platform = ocp4 ]; then
-  while ! oc expose service px-grafana -n portworx; do
-    echo waiting for px-grafana service
-    sleep 1
-    kubectl patch StorageCluster $STC -n portworx --type merge --patch '{"spec": {"monitoring": {"grafana": {"enabled": true}}}}'
-  done
+  oc apply -n portworx -f /assets/grafana/grafana-service-account.yaml
+  oc -n portworx adm policy add-cluster-role-to-user cluster-monitoring-view -z grafana
+  OCP_TOKEN=$(oc -n portworx create token grafana --duration=8760h)
+  OCP_THANOS=$(oc get route thanos-querier -n openshift-monitoring -o json | jq -r '.spec.host')
+  sed -i "s/<THANOS_QUERIER_HOST>/$OCP_THANOS/" /assets/grafana/grafana-datasource-ocp.yaml
+  sed -i "s/<BEARER_TOKEN>/$OCP_TOKEN/" /assets/grafana/grafana-datasource-ocp.yaml
+  oc -n portworx create configmap grafana-source-config --from-file=/assets/grafana/grafana-datasource-ocp.yaml
+  oc -n portworx apply -f /assets/grafana/grafana-ocp.yaml
+  oc expose service px-grafana -n portworx
 fi
 
 # install storkctl

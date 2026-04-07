@@ -1,0 +1,12 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: node-exporter
+  labels:
+    prometheus: portworx
+spec:
+  selector:
+    matchLabels:
+      name: node-exporter
+  endpoints:
+  - port: node-exporter
