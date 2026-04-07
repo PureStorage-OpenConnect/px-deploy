@@ -511,7 +511,6 @@ func main() {
 	cmdCreate.Flags().StringVarP(&createRegion, "region", "r", "", "AWS, GCP or Azure region (default "+defaults.Aws_Region+", "+defaults.Gcp_Region+" or "+defaults.Azure_Region+")")
 	cmdCreate.Flags().StringVarP(&flags.Cloud, "cloud", "C", "", "aws | gcp | azure | vsphere (default "+defaults.Cloud+")")
 	cmdCreate.Flags().StringVarP(&flags.Ssh_Pub_Key, "ssh_pub_key", "", "", "ssh public key which will be added for root access on each node")
-	cmdCreate.Flags().BoolVarP(&flags.Run_Predelete, "predelete", "", false, "run predelete scripts on destruction (true/false)")
 	cmdCreate.Flags().StringVarP(&createEnv, "env", "e", "", "Comma-separated list of environment variables to be passed, for example foo=bar,abc=123")
 	cmdCreate.Flags().BoolVarP(&flags.DryRun, "dry_run", "d", false, "dry-run, create local files only. Works only on aws / azure")
 	cmdCreate.Flags().BoolVarP(&flags.NoSync, "no_sync", "", false, "do not sync assets/infra/scripts/templates from container to local dir, allows to change local scripts")
@@ -1634,11 +1633,6 @@ func prepare_predelete(config *Config, runtype string, destroyForce bool) {
 	//vsphere: [configname]-master-[clusternum]
 
 	var name_pre, name_post string
-
-	// script predelete only executes if set in config
-	if !config.Run_Predelete && runtype == "script" {
-		return
-	}
 
 	clusters, _ := strconv.Atoi(config.Clusters)
 	predelete_status := make(chan Predelete_Status_Return, clusters)
