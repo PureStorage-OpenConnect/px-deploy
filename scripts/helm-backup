@@ -1,5 +1,5 @@
 NAMESPACE=central
-VERSION=2.10.2
+VERSION=2.11.0
 
 kubectl apply -f /assets/helm-backup/namespace.yml
 
