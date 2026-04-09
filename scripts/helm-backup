@@ -1,5 +1,10 @@
 NAMESPACE=central
-VERSION=2.11.0
+
+if [ -v pxb_version ]; then
+  VERSION=$pxb_version
+else
+  VERSION=2.11.0
+fi
 
 kubectl apply -f /assets/helm-backup/namespace.yml
 

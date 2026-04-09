@@ -9,3 +9,5 @@ scripts: ["install-awscli", "install-px", "licenses", "helm-backup", "dude"]
 cluster:
 - id: 1
   scripts: ["wetty"]
+env:
+  pxb_version: "2.10.2"
