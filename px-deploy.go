@@ -132,8 +132,10 @@ type Deployment_Status_Return struct {
 }
 
 type Predelete_Status_Return struct {
-	node    string
-	success bool
+	node     string
+	success  bool
+	runtype  string
+	errormsg string
 }
 
 var Reset = "\033[0m"
@@ -1675,11 +1677,16 @@ func prepare_predelete(config *Config, runtype string, destroyForce bool) {
 
 	for elem := range predelete_status {
 		if !elem.success {
-			if destroyForce {
-				fmt.Printf("%v %v failed %v predelete. --force parmeter set. Continuing delete%v\n", Red, elem.node, runtype, Reset)
+
+			if elem.runtype == "platform" {
+				if destroyForce {
+					fmt.Printf("%v %v failed %v predelete. --force parmeter set. Continuing delete. Error: %v %v\n", Red, elem.node, runtype, elem.errormsg, Reset)
+				} else {
+					fmt.Printf("%v %v failed %v predelete. canceled deletion process.\nensure %v is powered on and can be accessed by ssh, then retry\n(to enforce deletion use --force parameter) Error: %v %v\n", Red, elem.node, runtype, elem.node, elem.errormsg, Reset)
+					os.Exit(1)
+				}
 			} else {
-				fmt.Printf("%v %v failed %v predelete. canceled deletion process.\nensure %v is powered on and can be accessed by ssh, then retry\n(to enforce deletion use --force parameter)%v\n", Red, elem.node, runtype, elem.node, Reset)
-				os.Exit(1)
+				fmt.Printf("Warning: %v %v failed %v predelete. Error: %v %v\n", Yellow, elem.node, runtype, elem.errormsg, Reset)
 			}
 		}
 	}
@@ -1719,21 +1726,24 @@ func exec_predelete(config *Config, confNode string, confPath string, success ch
 		}
 
 	}
-	fmt.Printf("Running pre-delete scripts on %v (%v)\n", confNode, ip)
+	if ip == "" {
+		success <- Predelete_Status_Return{confNode, false, confPath, "Could not determine IP address. Check if instance is powered on"}
+	} else {
+		fmt.Printf("Running %v pre-delete on %v (%v)\n", confPath, confNode, ip)
 
-	cmd := exec.Command("/usr/bin/ssh", "-oStrictHostKeyChecking=no", "-q", "-i", "keys/id_rsa."+config.Cloud+"."+config.Name, "root@"+ip, `
+		cmd := exec.Command("/usr/bin/ssh", "-oStrictHostKeyChecking=no", "-q", "-i", "keys/id_rsa."+config.Cloud+"."+config.Name, "root@"+ip, `
 		for i in /px-deploy/`+confPath+`-delete/*.sh; do bash $i ;done; exit 0
 	`)
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	err := cmd.Run()
-	if err != nil {
-		fmt.Println(Yellow + "Failed to run pre-delete script:" + err.Error() + Reset)
-		success <- Predelete_Status_Return{confNode, false}
-	} else {
-		success <- Predelete_Status_Return{confNode, true}
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+		err := cmd.Run()
+		if err != nil {
+			//fmt.Println(Yellow + "Failed to run pre-delete script:" + err.Error() + Reset)
+			success <- Predelete_Status_Return{confNode, false, confPath, err.Error()}
+		} else {
+			success <- Predelete_Status_Return{confNode, true, confPath, ""}
+		}
 	}
-
 }
 
 // return which variables are empty
