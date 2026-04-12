@@ -2,7 +2,7 @@ terraform {
   required_providers {
     google = {
       source  = "hashicorp/google"
-      version = "6.12.0"
+      version = "7.27.0"
     }
     local = {
       source = "hashicorp/local"
@@ -87,7 +87,7 @@ resource "local_file" "startup-script" {
 
 data "google_compute_image" "rocky" {
 	project  = "rocky-linux-cloud"
-	family = "rocky-linux-9-optimized-gcp"
+	family = "rocky-linux-9"
 }
 
 locals {
