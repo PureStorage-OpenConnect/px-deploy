@@ -457,10 +457,27 @@ func delete_elb_instances(vpc string, cfg aws.Config) {
 	}
 	wg.Wait()
 
+	//find LoadBalancer target groups associated with this VPC
+	fmt.Println("Deleting LoadBalancer Target Groups within VPC")
+	lbtg, err := elbv2client.DescribeTargetGroups(context.TODO(), &elasticloadbalancingv2.DescribeTargetGroupsInput{})
+	if err != nil {
+		fmt.Println("Error retrieving LoadBalancer Target Groups:")
+		fmt.Println(err)
+		return
+	}
+	for _, i := range lbtg.TargetGroups {
+		if *i.VpcId == vpc {
+			fmt.Printf("   delete TargetGroup %s\n", *i.TargetGroupName)
+			wg.Add(1)
+			go delete_and_wait_targetgroup(elbv2client, *i.TargetGroupArn)
+		}
+	}
+	wg.Wait()
+
 	//find other SGs referencing the ELB SGs
 	//delete the referencing rules
 	// find referencing SGs
-	fmt.Println(" Deleting SG rules referencing the ELB SGs")
+	fmt.Println("Deleting SG rules referencing the ELB SGs")
 	sg, err := ec2client.DescribeSecurityGroups(context.TODO(), &ec2.DescribeSecurityGroupsInput{
 		Filters: []types.Filter{
 			{
@@ -517,7 +534,7 @@ func delete_elb_instances(vpc string, cfg aws.Config) {
 	}
 	wg.Wait()
 
-	fmt.Println(" Deleting ELB SGs")
+	fmt.Println("Deleting ELB SGs")
 	for _, v := range elb_sg_list {
 		fmt.Printf("   delete SG %s \n", v)
 		wg.Add(1)
@@ -594,6 +611,18 @@ func delete_and_wait_elbv2(client *elasticloadbalancingv2.Client, elbArn string)
 			fmt.Printf("   Wait 5 sec for deletion of ELB %s \n", elbArn)
 			time.Sleep(5 * time.Second)
 		}
+	}
+}
+
+func delete_and_wait_targetgroup(client *elasticloadbalancingv2.Client, targetgroupArn string) {
+	defer wg.Done()
+	_, err := client.DeleteTargetGroup(context.TODO(), &elasticloadbalancingv2.DeleteTargetGroupInput{
+		TargetGroupArn: aws.String(targetgroupArn),
+	})
+	if err != nil {
+		fmt.Println("Error deleting TargetGroup:")
+		fmt.Println(err)
+		return
 	}
 }
 
