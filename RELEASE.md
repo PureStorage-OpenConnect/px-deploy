@@ -1,6 +1,15 @@
+# 6.7
+##Fixes
+* fix & update grafana setup on k8s and ocp4
+
 ##Improvements
+* PX Ent 3.6
+* PXB 2.11
+* update OCP4,GKE,EKS,AKS
+* remove AWS ELB Target Groups on deployment deletion
 * Refactor PX-Backup scripts
 * Refactor dude scripts
+* run predelete scripts by default
 
 # 6.6.1
 ##Fixes
