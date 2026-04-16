@@ -7,3 +7,5 @@ cluster:
   - id: 1
     scripts: ["install-awscli", "snoop", "helm-backup", "training-backup-bastion", "wetty" ]
     nodes: 4
+env:
+  pxb_version: "2.10.2"
