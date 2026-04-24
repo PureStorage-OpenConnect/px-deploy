@@ -1,0 +1,221 @@
+# Install Portworx
+
+echo "" > values.yaml
+VALUES+=('.imageVersion="3.6.0"')
+VALUES+=('.deployOperator=false')
+VALUES+=('.clusterName="px-deploy-1"')
+VALUES+=('.monitoring.prometheus.enabled=true')
+VALUES+=('.monitoring.telemetry.enabled=false')
+VALUES+=('.openshiftInstall=true')
+
+for key in "${VALUES[@]}"; do
+  yq -i $key values.yaml
+done
+
+
+helm install portworx portworx/portworx --dry-run -n portworx -f values.yaml
+
+
+
+# If you want to use clouddrives, set the environment variable cloud_drive="type%3Dgp2%2Csize%3D150"
+# otherwise existing drives will be used
+
+# To use a journal, set the environment variable journal=auto or journal=/dev/sdb
+
+# Default secrets store is k8s; can also set environment variable secrets=vault
+
+# You can also set security=true
+
+# If you select cloud=vsphere, clouddrives will be provisioned from vsphere_disks
+
+kubectl create namespace portworx
+if [ $cloud = vsphere ]; then
+  VSPHERE_USER=$(base64 <<<$vsphere_user)
+  VSPHERE_PASSWORD=$(base64 <<<$vsphere_password)
+  kubectl apply -f - <<EOF
+apiVersion: v1
+kind: Secret
+metadata:
+  name: px-vsphere-secret
+  namespace: portworx
+type: Opaque
+data:
+  VSPHERE_USER: $VSPHERE_USER
+  VSPHERE_PASSWORD: $VSPHERE_PASSWORD
+EOF
+  for i in $vsphere_disks; do
+    vsphere_cd="$vsphere_cd%22type=thin,size=$i%22,"
+  done
+  vsphere_cd=${vsphere_cd::-1}
+  vsphere_suffix="vsp=true&ds=$vsphere_datastore&vc=$vsphere_host&s=$vsphere_cd&mz=0"
+fi
+
+k8s_version=$((kubectl version --short 2>&1 || kubectl version) | awk -Fv '/Server Version: / {print $3}')
+url="https://install.portworx.com/$px_version?kbver=$k8s_version&b=true&c=px-deploy-$cluster&stork=true&st=k8s&lh=true&mon=true&tel=false&operator=true"
+[ -e /usr/bin/oc ] && url="$url&osft=true"
+if [ "$cloud_drive" ]; then
+  if [ "$cloud" = "azure" ]; then
+    url="$url&e=AZURE_CLIENT_ID%3D$azure_client_id%2CAZURE_CLIENT_SECRET%3D$azure_client_secret%2CAZURE_TENANT_ID%3D$azure_tenant_id"
+  fi
+  url="$url&s=%22$cloud_drive%2Ctags%3Dpxd_uuid_cd%3A$pxd_uuid%22&mz=0&kd=$cloud_drive%2Ctags%3Dpxd_uuid_cd%3A$pxd_uuid"
+  
+  [ "$cloud" = aws ] && url="$url&ce=aws"
+  [ "$cloud" = gcp ] && url="$url&ce=gce"
+  [ "$cloud" = azure ] && url="$url&ce=azure"
+
+fi
+if [ "$journal" ]; then
+  url="$url&j=$journal"
+fi
+
+if [ "$promop" = false ] || [ "$platform" = ocp4 ]; then
+  url="$url&promop=false&mon=true"
+else 
+  url="$url&promop=true&mon=true"
+fi
+
+[ "$px_suffix" ] && url="$url&$px_suffix"
+[ "$vsphere_suffix" ] && url="$url&$vsphere_suffix"
+[ "$platform" = eks ] && url="$url&eks=true"
+[ "$platform" = ocp4 ] && url="$url&r=17001"
+[ "$security" = true ] && url="$url&security=true"
+[ "$etcd" = EXTERNAL ] && url="$url&k=etcd:http://$(grep master-1 /etc/hosts | cut -d\  -f1):2382"
+
+if [ "$platform" = ocp4 ]; then
+  oc apply -f - <<EOF
+apiVersion: operators.coreos.com/v1
+kind: OperatorGroup
+metadata:
+  name: portworx-og
+  namespace: portworx
+spec:
+  targetNamespaces:
+  - portworx
+---
+apiVersion: operators.coreos.com/v1alpha1
+kind: Subscription
+metadata:
+  labels:
+    operators.coreos.com/portworx-certified.openshift-operators: ''
+  name: portworx-certified
+  namespace: portworx
+spec:
+  channel: stable
+  installPlanApproval: Automatic
+  name: portworx-certified
+  source: certified-operators
+  sourceNamespace: openshift-marketplace
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cluster-monitoring-config
+  namespace: openshift-monitoring
+data:
+  config.yaml: |
+    enableUserWorkload: true
+EOF
+  while ! oc get csv -n portworx  | grep portworx-operator | grep -q Succeeded ; do
+    sleep 2
+  done
+fi
+
+if [ "$platform" != ocp4 ]; then
+  curl -sk "https://install.portworx.com/$px_version?comp=pxoperator&kbver=$k8s_version" | sed 's/kube-system/portworx/g' | sed 's/imagePullPolicy: Always/imagePullPolicy: IfNotPresent/g' | kubectl apply -f -
+  while ! kubectl wait --for=condition=ready pod -lname=portworx-operator -n portworx; do
+    sleep 2
+  done
+fi
+
+if [ "$secrets" = vault ]; then
+  bash /assets/install-vault.sh
+  url="$url&st=vault&e=VAULT_ADDR%3Dhttp://master-$cluster:8200"
+fi
+
+if [ "$platform" = gke ]; then
+  url="$url&gke=true"
+fi
+
+if [ "$platform" = aks ]; then
+  url="$url&aks=true"
+  kubectl create secret generic -n portworx px-azure --from-literal=AZURE_TENANT_ID=$azure_tenant_id --from-literal=AZURE_CLIENT_ID=$azure_client_id --from-literal=AZURE_CLIENT_SECRET=$azure_client_secret
+fi
+
+curl -sko /tmp/px.yml $url
+sed -i 's/namespace: kube-system/namespace: portworx/' /tmp/px.yml
+sed -i 's/imagePullPolicy: Always/imagePullPolicy: IfNotPresent/' /tmp/px.yml
+sed -i '/annotations:/a\    portworx.io/health-check: "skip"' /tmp/px.yml
+[ -f "/tmp/metro" ] && clusterdomain=$(cat /tmp/metro) && sed -i '/  annotations:/a\ \ \ \ '"$clusterdomain"'' /tmp/px.yml
+
+# check if CRDs are created
+while ! kubectl wait --for condition=established crd/storageclusters.core.libopenstorage.org; do
+    sleep 2
+done
+while ! kubectl wait --for condition=established crd/storagenodes.core.libopenstorage.org; do
+    sleep 2
+done
+
+kubectl apply -f /tmp/px.yml
+
+# Install px cli
+curl -L -o /tmp/pxcli.tgz https://mirrors.portworx.com/packages/px-cli/v1.2.0/px-v1.2.0.linux.amd64.tar.gz                        
+tar -xzf /tmp/pxcli.tgz  -C /tmp/
+chmod +x /tmp/px/bin/px* 
+cp /tmp/px/bin/* /usr/local/bin/
+
+# Install pxctl.sh
+cp /assets/pxctl.sh /usr/bin/pxctl
+chmod 755 /usr/bin/pxctl
+
+# Wait for cluster readiness
+while ! kubectl get stc -A -n portworx | grep -q 'Running\|Online'; do
+  echo "Waiting for StorageCluster status online"
+  sleep 3
+done
+
+# metro renames stc
+STC=$(kubectl get StorageCluster -n portworx -o json | jq -r ".items[0].metadata.name")
+
+# If OCP, enabled console plugin and Prometheus
+if [ $platform = ocp4 ]; then
+  kubectl patch StorageCluster $STC -n portworx --type merge --patch '{"spec": {"monitoring": {"prometheus": {"enabled": true}}}}'
+  kubectl patch console.operator cluster --type json -p '[{"op": "add", "path": "/spec/plugins/-", "value": "portworx"}]'
+fi
+
+# configure monitoring
+kubectl -n portworx create configmap grafana-dashboards \
+--from-file=/assets/grafana/portworx-cluster-dashboard.json \
+--from-file=/assets/grafana/portworx-performance-dashboard.json \
+--from-file=/assets/grafana/portworx-node-dashboard.json \
+--from-file=/assets/grafana/portworx-volume-dashboard.json \
+--from-file=/assets/grafana/portworx-etcd-dashboard.json  \
+--from-file=/assets/grafana/portworx-dr-dashboard.json
+kubectl -n portworx create configmap grafana-dashboard-config --from-file=/assets/grafana/grafana-dashboard-config.yaml
+
+if [ $platform = k8s ]; then
+  kubectl -n portworx create configmap grafana-source-config --from-file=/assets/grafana/grafana-datasource.yaml
+  kubectl -n portworx apply -f /assets/grafana/node-exporter.yaml
+  kubectl -n portworx apply -f /assets/grafana/node-exporter-svc.yaml
+  kubectl -n portworx apply -f /assets/grafana/node-exporter-servicemonitor.yaml
+  kubectl -n portworx apply -f /assets/grafana/grafana.yaml
+elif [ $platform = ocp4 ]; then
+  oc apply -n portworx -f /assets/grafana/grafana-service-account.yaml
+  oc -n portworx adm policy add-cluster-role-to-user cluster-monitoring-view -z grafana
+  OCP_TOKEN=$(oc -n portworx create token grafana --duration=8760h)
+  OCP_THANOS=$(oc get route thanos-querier -n openshift-monitoring -o json | jq -r '.spec.host')
+  sed -i "s/<THANOS_QUERIER_HOST>/$OCP_THANOS/" /assets/grafana/grafana-datasource-ocp.yaml
+  sed -i "s/<BEARER_TOKEN>/$OCP_TOKEN/" /assets/grafana/grafana-datasource-ocp.yaml
+  oc -n portworx create configmap grafana-source-config --from-file=/assets/grafana/grafana-datasource-ocp.yaml
+  oc -n portworx apply -f /assets/grafana/grafana-ocp.yaml
+  oc expose service grafana -n portworx
+fi
+
+# install storkctl
+STORK_POD=$(kubectl get pods -n portworx -l name=stork -o jsonpath='{.items[0].metadata.name}')
+while ! kubectl cp -n portworx $STORK_POD:/storkctl/linux/storkctl /usr/local/bin/storkctl ; do
+    echo "trying to kubectl cp storkctl out of $STORK_POD"
+    sleep 2
+    STORK_POD=$(kubectl get pods -n portworx -l name=stork -o jsonpath='{.items[0].metadata.name}')
+done
+chmod +x /usr/local/bin/storkctl
+storkctl completion bash >/etc/bash_completion.d/storkctl
