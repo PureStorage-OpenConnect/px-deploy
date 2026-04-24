@@ -56,6 +56,7 @@ type Config struct {
 	Aws_Type                 string
 	Aws_Ebs                  string
 	Aws_Tags                 string
+	Aws_Nested_Virt          string
 	Eks_Version              string
 	Tags                     string
 	Aws_Access_Key_Id        string
@@ -118,12 +119,13 @@ type Config struct {
 }
 
 type Config_Cluster struct {
-	Id         int
-	Scripts    []string
-	Aws_Type   string
-	Azure_Type string
-	Gcp_Type   string
-	Nodes      string
+	Id              int
+	Scripts         []string
+	Aws_Type        string
+	Azure_Type      string
+	Gcp_Type        string
+	Nodes           string
+	Aws_Nested_Virt string
 }
 
 type Deployment_Status_Return struct {
@@ -495,6 +497,7 @@ func main() {
 	cmdCreate.Flags().StringVarP(&flags.Aws_Region, "aws_region", "", "", "AWS Region (default "+defaults.Aws_Region+")")
 	cmdCreate.Flags().StringVarP(&flags.Aws_Access_Key_Id, "aws_access_key_id", "", "", "your AWS API access key id (default \""+defaults.Aws_Access_Key_Id+"\")")
 	cmdCreate.Flags().StringVarP(&flags.Aws_Secret_Access_Key, "aws_secret_access_key", "", "", "your AWS API secret access key")
+	cmdCreate.Flags().StringVarP(&flags.Aws_Nested_Virt, "aws_nested_virt", "", "disabled", "enabled | disabled nested virt on aws")
 	cmdCreate.Flags().StringVarP(&flags.Tags, "tags", "", "", "comma-separated list of tags to be applies to cloud nodes, eg \"Owner=Bob,Purpose=Demo\"")
 	cmdCreate.Flags().StringVarP(&flags.Gcp_Type, "gcp_type", "", "", "GCP type for each node (default "+defaults.Gcp_Type+")")
 	cmdCreate.Flags().StringVarP(&flags.Gcp_Project, "gcp_project", "", "", "GCP Project")

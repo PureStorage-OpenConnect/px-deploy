@@ -2,7 +2,7 @@ terraform {
   required_providers {
     aws = {
       source  = "hashicorp/aws"
-      version = "5.99.1"
+      version = "6.42.0"
     }
     local = {
       source = "hashicorp/local"
@@ -368,6 +368,7 @@ locals {
       for i in range(1, vm.nodecount+1) : {
         instance_name 	= "${vm.role}-${vm.cluster}-${i}"
         instance_type 	= vm.instance_type
+		aws_nested_virt = vm.aws_nested_virt
 		nodenum			= i
 		cluster 		= vm.cluster
         blockdisks 		= vm.ebs_block_devices
@@ -407,7 +408,12 @@ resource "aws_instance" "node" {
 	timeouts {
 		delete = "30m"
 	}
+
+	cpu_options {
+			nested_virtualization = each.value.aws_nested_virt
+	}
 	
+
 	dynamic "ebs_block_device"{
     	for_each 				= each.value.blockdisks
     	content {

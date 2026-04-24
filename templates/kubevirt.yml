@@ -1,3 +1,4 @@
 description: Install kubevirt on a bare-metal cluster
 scripts: ["install-px","kubevirt","kubevirt-apps"]
-aws_type: "c5n.metal"
+aws_type: "m8i.2xlarge"
+aws_nested_virt: "enabled"
