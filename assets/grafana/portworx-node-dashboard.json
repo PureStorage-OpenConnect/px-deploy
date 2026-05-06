@@ -272,6 +272,7 @@
           "showLegend": true
         },
         "tooltip": {
+          "hideZeros": false,
           "mode": "single",
           "sort": "none"
         }
@@ -285,7 +286,7 @@
             "uid": "P1809F7CD0C75ACF3"
           },
           "dsType": "influxdb",
-          "expr": "px_cluster_disk_total_bytes{cluster=~\"[[Cluster]]\",instance=~\"[[Instances]]\"}",
+          "expr": "px_cluster_disk_total_bytes{cluster=~\"[[Cluster]]\",node=~\"[[Instances]]\"}",
           "format": "time_series",
           "groupBy": [
             {
@@ -345,7 +346,7 @@
             "uid": "P1809F7CD0C75ACF3"
           },
           "dsType": "influxdb",
-          "expr": "px_cluster_disk_utilized_bytes{cluster=~\"[[Cluster]]\",instance=~\"[[Instances]]\"}",
+          "expr": "px_cluster_disk_utilized_bytes{cluster=~\"[[Cluster]]\",node=~\"[[Instances]]\"}",
           "format": "time_series",
           "groupBy": [
             {
@@ -496,6 +497,7 @@
           "sortDesc": true
         },
         "tooltip": {
+          "hideZeros": false,
           "mode": "multi",
           "sort": "none"
         }
@@ -509,7 +511,7 @@
             "uid": "P1809F7CD0C75ACF3"
           },
           "dsType": "influxdb",
-          "expr": "px_cluster_cpu_percent{cluster=~\"[[Cluster]]\",instance=~\"[[Instances]]\"}",
+          "expr": "100 - (avg by (instance) (irate(node_cpu_seconds_total{mode=\"idle\", job=\"node-exporter\", instance=~\"[[Instances]]\"}[5m])) * 100)",
           "format": "time_series",
           "groupBy": [
             {
@@ -649,6 +651,7 @@
           "showLegend": true
         },
         "tooltip": {
+          "hideZeros": false,
           "mode": "single",
           "sort": "none"
         }
@@ -662,7 +665,7 @@
             "uid": "P1809F7CD0C75ACF3"
           },
           "dsType": "influxdb",
-          "expr": "px_cluster_memory_utilized_percent{cluster=~\"[[Cluster]]\",instance=~\"[[Instances]]\"}",
+          "expr": "(1 - (node_memory_MemAvailable_bytes{job=\"node-exporter\", instance=~\"[[Instances]]\"} / node_memory_MemTotal_bytes{job=\"node-exporter\", instance=~\"[[Instances]]\"})) * 100",
           "format": "time_series",
           "groupBy": [
             {
@@ -721,7 +724,7 @@
           ]
         }
       ],
-      "title": "PWX Memory Usage",
+      "title": "Node Memory Usage",
       "type": "timeseries"
     },
     {
@@ -800,6 +803,7 @@
           "showLegend": true
         },
         "tooltip": {
+          "hideZeros": false,
           "mode": "single",
           "sort": "none"
         }
@@ -813,7 +817,7 @@
             "uid": "P1809F7CD0C75ACF3"
           },
           "dsType": "influxdb",
-          "expr": "px_network_io_bytessent{cluster=~\"[[Cluster]]\",instance=~\"[[Instances]]\"}",
+          "expr": "irate(node_network_transmit_bytes_total{job=\"node-exporter\", instance=~\"[[Instances]]\"}[5m])",
           "format": "time_series",
           "groupBy": [
             {
@@ -866,7 +870,7 @@
             "uid": "P1809F7CD0C75ACF3"
           },
           "dsType": "influxdb",
-          "expr": "px_network_io_received_bytes{cluster=~\"[[Cluster]]\",instance=~\"[[Instances]]\"}",
+          "expr": "irate(node_network_receive_bytes_total{job=\"node-exporter\", instance=~\"[[Instances]]\"}[5m])",
           "format": "time_series",
           "groupBy": [
             {
@@ -993,6 +997,7 @@
           "showLegend": true
         },
         "tooltip": {
+          "hideZeros": false,
           "mode": "single",
           "sort": "none"
         }
@@ -1006,7 +1011,7 @@
             "uid": "P1809F7CD0C75ACF3"
           },
           "dsType": "influxdb",
-          "expr": "irate(px_disk_stats_read_seconds {cluster=~\"[[Cluster]]\",instance=~\"[[Instances]]\"}[5m])",
+          "expr": "px_node_stats_read_latency_seconds{cluster=~\"[[Cluster]]\",node=~\"[[Instances]]\"}",
           "format": "time_series",
           "groupBy": [
             {
@@ -1060,7 +1065,7 @@
             "uid": "P1809F7CD0C75ACF3"
           },
           "dsType": "influxdb",
-          "expr": "irate(px_disk_stats_write_seconds {cluster=~\"[[Cluster]]\",instance=~\"[[Instances]]\"}[5m])",
+          "expr": "px_node_stats_write_latency_seconds{cluster=~\"[[Cluster]]\",node=~\"[[Instances]]\"}",
           "format": "time_series",
           "groupBy": [
             {
@@ -1187,6 +1192,7 @@
           "showLegend": true
         },
         "tooltip": {
+          "hideZeros": false,
           "mode": "single",
           "sort": "none"
         }
@@ -1200,7 +1206,7 @@
             "uid": "P1809F7CD0C75ACF3"
           },
           "dsType": "influxdb",
-          "expr": "irate(px_disk_stats_disk_read_bytes{cluster=~\"[[Cluster]]\",instance=~\"[[Instances]]\"}[5m])",
+          "expr": "irate(px_node_stats_read_bytes{cluster=~\"[[Cluster]]\",node=~\"[[Instances]]\"}[5m])",
           "format": "time_series",
           "groupBy": [
             {
@@ -1260,7 +1266,7 @@
             "uid": "P1809F7CD0C75ACF3"
           },
           "dsType": "influxdb",
-          "expr": "irate(px_disk_stats_write_bytes_seconds{cluster=~\"[[Cluster]]\",instance=~\"[[Instances]]\"}[5m])",
+          "expr": "irate(px_node_stats_written_bytes{cluster=~\"[[Cluster]]\",node=~\"[[Instances]]\"}[5m])",
           "format": "time_series",
           "groupBy": [
             {
@@ -1393,6 +1399,7 @@
           "showLegend": true
         },
         "tooltip": {
+          "hideZeros": false,
           "mode": "single",
           "sort": "none"
         }
@@ -1406,7 +1413,7 @@
             "uid": "P1809F7CD0C75ACF3"
           },
           "dsType": "influxdb",
-          "expr": "px_disk_stats_read_latency_seconds{cluster=~\"[[Cluster]]\",instance=~\"[[Instances]]\"}",
+          "expr": "px_node_stats_read_latency_seconds{cluster=~\"[[Cluster]]\",node=~\"[[Instances]]\"}",
           "format": "time_series",
           "groupBy": [
             {
@@ -1466,7 +1473,7 @@
             "uid": "P1809F7CD0C75ACF3"
           },
           "dsType": "influxdb",
-          "expr": "px_disk_stats_write_latency_seconds{cluster=~\"[[Cluster]]\",instance=~\"[[Instances]]\"}",
+          "expr": "px_node_stats_write_latency_seconds{cluster=~\"[[Cluster]]\",node=~\"[[Instances]]\"}",
           "format": "time_series",
           "groupBy": [
             {
@@ -1525,34 +1532,50 @@
     }
   ],
   "preload": false,
-  "refresh": false,
-  "schemaVersion": 18,
+  "refresh": "",
+  "schemaVersion": 40,
   "tags": [],
   "templating": {
     "list": [
       {
-        "current": {},
-        "datasource": "prometheus",
-        "hide": 1,
+        "current": {
+          "text": "px-cluster-be25284c-2831-4e2e-b4bb-b5fd3582928c",
+          "value": "px-cluster-be25284c-2831-4e2e-b4bb-b5fd3582928c"
+        },
+        "datasource": {
+          "type": "prometheus",
+          "uid": "P1809F7CD0C75ACF3"
+        },
         "includeAll": false,
+        "label": "Cluster",
         "name": "Cluster",
         "options": [],
-        "query": "px_cluster_cpu_percent",
+        "query": "label_values(px_cluster_cpu_percent, cluster)",
         "refresh": 1,
-        "regex": "/.*cluster=\"([^\"]*).*/",
+        "regex": "",
         "type": "query"
       },
       {
-        "current": {},
-        "datasource": "prometheus",
-        "hide": 1,
+        "current": {
+          "text": [
+            "pwx-ocp-224-179-rql2p-worker-0-9wlvc"
+          ],
+          "value": [
+            "pwx-ocp-224-179-rql2p-worker-0-9wlvc"
+          ]
+        },
+        "datasource": {
+          "type": "prometheus",
+          "uid": "P1809F7CD0C75ACF3"
+        },
         "includeAll": false,
+        "label": "Instance",
         "multi": true,
         "name": "Instances",
         "options": [],
-        "query": "px_cluster_cpu_percent",
+        "query": "label_values(px_cluster_cpu_percent, node)",
         "refresh": 1,
-        "regex": "/.*instance=\"([^\"]*).*/",
+        "regex": "",
         "sort": 1,
         "type": "query"
       }
@@ -1562,34 +1585,10 @@
     "from": "now-3h",
     "to": "now"
   },
-  "timepicker": {
-    "refresh_intervals": [
-      "5s",
-      "10s",
-      "30s",
-      "1m",
-      "5m",
-      "15m",
-      "30m",
-      "1h",
-      "2h",
-      "1d"
-    ],
-    "time_options": [
-      "5m",
-      "15m",
-      "1h",
-      "6h",
-      "12h",
-      "24h",
-      "2d",
-      "7d",
-      "30d"
-    ]
-  },
+  "timepicker": {},
   "timezone": "",
-  "title": "Portworx Node Dashboard",
-  "uid": "portworx-node-dashboard",
+  "title": "Portworx Node Dashboard - Node Exporter",
+  "uid": "portworx-node-dashboard-node-exporter",
   "version": 1,
   "weekStart": ""
 }

@@ -16,13 +16,17 @@
     ]
   },
   "editable": true,
-  "fiscalYearStartMonth": 0,
+  "gnetId": null,
   "graphTooltip": 0,
-  "id": 3,
+  "id": null,
   "links": [],
   "panels": [
     {
       "collapsed": false,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "P1809F7CD0C75ACF3"
+      },
       "gridPos": {
         "h": 1,
         "w": 24,
@@ -74,7 +78,7 @@
               }
             ]
           },
-          "unit": "dtdurations"
+          "unit": "s"
         },
         "overrides": []
       },
@@ -100,24 +104,25 @@
           "values": false
         },
         "showPercentChange": false,
+        "text": {},
         "textMode": "auto",
         "wideLayout": true
       },
-      "pluginVersion": "11.5.0",
+      "pluginVersion": "7.5.17",
       "targets": [
         {
           "datasource": {
-            "type": "prometheus",
-            "uid": "P1809F7CD0C75ACF3"
-          },
-          "exemplar": true,
-          "expr": "avg(px_volume_vol_read_latency_seconds{cluster=~\"[[Cluster]]\"})",
+        "type": "prometheus",
+        "uid": "P1809F7CD0C75ACF3"
+      },
+          "exemplar": false,
+          "expr": "avg(px_volume_read_latency_seconds{cluster=~\"$Cluster\"})",
           "format": "time_series",
           "hide": false,
           "instant": false,
           "interval": "",
           "intervalFactor": 4,
-          "legendFormat": "",
+          "legendFormat": "Avg Read Latency",
           "range": true,
           "refId": "A"
         }
@@ -151,22 +156,18 @@
             "mode": "palette-classic"
           },
           "custom": {
-            "axisBorderShow": false,
-            "axisCenteredZero": false,
-            "axisColorMode": "text",
             "axisLabel": "",
             "axisPlacement": "auto",
             "barAlignment": 0,
-            "barWidthFactor": 0.6,
             "drawStyle": "line",
             "fillOpacity": 10,
             "gradientMode": "none",
             "hideFrom": {
+              "graph": false,
               "legend": false,
               "tooltip": false,
               "viz": false
             },
-            "insertNulls": false,
             "lineInterpolation": "linear",
             "lineWidth": 1,
             "pointSize": 5,
@@ -174,14 +175,7 @@
               "type": "linear"
             },
             "showPoints": "never",
-            "spanNulls": false,
-            "stacking": {
-              "group": "A",
-              "mode": "none"
-            },
-            "thresholdsStyle": {
-              "mode": "off"
-            }
+            "spanNulls": false
           },
           "mappings": [],
           "thresholds": {
@@ -214,23 +208,26 @@
           "showLegend": true
         },
         "tooltip": {
+          "hideZeros": false,
           "mode": "single",
           "sort": "none"
+        },
+        "tooltipOptions": {
+          "mode": "single"
         }
       },
       "pluginVersion": "11.5.0",
       "targets": [
         {
           "datasource": {
-            "type": "prometheus",
-            "uid": "P1809F7CD0C75ACF3"
-          },
-          "exemplar": true,
-          "expr": "topk (10,(px_volume_usage_bytes{cluster=~\"[[Cluster]]\"}/px_volume_capacity_bytes{cluster=~\"[[Cluster]]\"})*100)",
-          "format": "time_series",
+        "type": "prometheus",
+        "uid": "P1809F7CD0C75ACF3"
+      },
+          "editorMode": "code",
+          "exemplar": false,
+          "expr": "topk(10, max((px_volume_usage_bytes{cluster=~\"$Cluster\"} / px_volume_capacity_bytes{cluster=~\"$Cluster\"}) * 100) by (exported_namespace, pvc))",
           "instant": false,
-          "intervalFactor": 1,
-          "legendFormat": "{{volumename}}",
+          "legendFormat": "{{exported_namespace}}/{{pvc}}",
           "range": true,
           "refId": "A"
         }
@@ -249,22 +246,18 @@
             "mode": "palette-classic"
           },
           "custom": {
-            "axisBorderShow": false,
-            "axisCenteredZero": false,
-            "axisColorMode": "text",
             "axisLabel": "",
             "axisPlacement": "auto",
             "barAlignment": 0,
-            "barWidthFactor": 0.6,
             "drawStyle": "line",
             "fillOpacity": 10,
             "gradientMode": "none",
             "hideFrom": {
+              "graph": false,
               "legend": false,
               "tooltip": false,
               "viz": false
             },
-            "insertNulls": false,
             "lineInterpolation": "linear",
             "lineWidth": 1,
             "pointSize": 5,
@@ -272,14 +265,7 @@
               "type": "linear"
             },
             "showPoints": "never",
-            "spanNulls": false,
-            "stacking": {
-              "group": "A",
-              "mode": "none"
-            },
-            "thresholdsStyle": {
-              "mode": "off"
-            }
+            "spanNulls": false
           },
           "mappings": [],
           "thresholds": {
@@ -312,22 +298,28 @@
           "showLegend": true
         },
         "tooltip": {
+          "hideZeros": false,
           "mode": "single",
           "sort": "none"
+        },
+        "tooltipOptions": {
+          "mode": "single"
         }
       },
       "pluginVersion": "11.5.0",
       "targets": [
         {
           "datasource": {
-            "type": "prometheus",
-            "uid": "P1809F7CD0C75ACF3"
-          },
-          "exemplar": true,
-          "expr": "topk(10,px_volume_depth_io{cluster=\"[[Cluster]]\"})",
+        "type": "prometheus",
+        "uid": "P1809F7CD0C75ACF3"
+      },
+          "editorMode": "code",
+          "exemplar": false,
+          "expr": "topk(10, max(px_volume_depth_io{cluster=~\"$Cluster\"}) by (exported_namespace, pvc))",
           "format": "time_series",
+          "interval": "",
           "intervalFactor": 1,
-          "legendFormat": "{{volumename}}",
+          "legendFormat": "{{exported_namespace}}/{{pvc}}",
           "range": true,
           "refId": "A"
         }
@@ -400,24 +392,25 @@
           "values": false
         },
         "showPercentChange": false,
+        "text": {},
         "textMode": "auto",
         "wideLayout": true
       },
-      "pluginVersion": "11.5.0",
+      "pluginVersion": "7.5.17",
       "targets": [
         {
           "datasource": {
-            "type": "prometheus",
-            "uid": "P1809F7CD0C75ACF3"
-          },
-          "exemplar": true,
-          "expr": "avg(px_volume_vol_write_latency_seconds{cluster=~\"[[Cluster]]\"})",
+        "type": "prometheus",
+        "uid": "P1809F7CD0C75ACF3"
+      },
+          "exemplar": false,
+          "expr": "avg(px_volume_write_latency_seconds{cluster=~\"$Cluster\"})",
           "format": "time_series",
           "hide": false,
           "instant": false,
           "interval": "",
           "intervalFactor": 4,
-          "legendFormat": "",
+          "legendFormat": "Avg Write Latency",
           "range": true,
           "refId": "B"
         }
@@ -442,6 +435,10 @@
     },
     {
       "collapsed": false,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "P1809F7CD0C75ACF3"
+      },
       "gridPos": {
         "h": 1,
         "w": 24,
@@ -450,8 +447,8 @@
       },
       "id": 55,
       "panels": [],
-      "repeat": "Volumes",
-      "title": "Volume: [[Volumes]]",
+      "repeat": "Cluster",
+      "title": "Cluster: [[Cluster]]",
       "type": "row"
     },
     {
@@ -501,6 +498,16 @@
         "y": 8
       },
       "id": 84,
+      "links": [
+        {
+          "title": "Show All Data",
+          "url": "/d/${__dashboard.uid}/${__dashboard.uid}?${Cluster:queryparam}&${Namespace:queryparam}&${PVC:queryparam}&var-ViewMode=9999&viewPanel=84"
+        },
+        {
+          "title": "Show Top Value",
+          "url": "/d/${__dashboard.uid}/${__dashboard.uid}?${Cluster:queryparam}&${Namespace:queryparam}&${PVC:queryparam}&var-ViewMode=1&viewPanel=84"
+        }
+      ],
       "maxDataPoints": 100,
       "options": {
         "minVizHeight": 75,
@@ -515,17 +522,20 @@
         },
         "showThresholdLabels": false,
         "showThresholdMarkers": true,
-        "sizing": "auto"
+        "sizing": "auto",
+        "text": {}
       },
-      "pluginVersion": "11.5.0",
+      "pluginVersion": "7.5.17",
       "targets": [
         {
           "datasource": {
-            "type": "prometheus",
-            "uid": "P1809F7CD0C75ACF3"
-          },
+        "type": "prometheus",
+        "uid": "P1809F7CD0C75ACF3"
+      },
           "dsType": "influxdb",
-          "expr": "px_volume_currhalevel{volumename=~\"[[Volumes]]\"}",
+          "editorMode": "code",
+          "exemplar": false,
+          "expr": "topk($ViewMode, max(px_volume_currhalevel{cluster=~\"$Cluster\", exported_namespace=~\"$Namespace\", pvc=~\"$PVC\"}) by (exported_namespace, pvc))",
           "format": "time_series",
           "groupBy": [
             {
@@ -541,11 +551,13 @@
               "type": "fill"
             }
           ],
+          "interval": "",
           "intervalFactor": 1,
-          "legendFormat": "{{volumename}}",
+          "legendFormat": "{{exported_namespace}}/{{pvc}}",
           "measurement": "px_volume_halevel",
           "orderByTime": "ASC",
           "policy": "default",
+          "range": true,
           "refId": "A",
           "resultFormat": "time_series",
           "select": [
@@ -564,12 +576,6 @@
           ],
           "tags": [
             {
-              "key": "volumename",
-              "operator": "=~",
-              "value": "/^$Volumes$/"
-            },
-            {
-              "condition": "AND",
               "key": "cluster",
               "operator": "=~",
               "value": "/^$Cluster$/"
@@ -630,6 +636,16 @@
         "y": 8
       },
       "id": 61,
+      "links": [
+        {
+          "title": "Show All Data",
+          "url": "/d/${__dashboard.uid}/${__dashboard.uid}?${Cluster:queryparam}&${Namespace:queryparam}&${PVC:queryparam}&var-ViewMode=9999&viewPanel=61"
+        },
+        {
+          "title": "Show Top Value",
+          "url": "/d/${__dashboard.uid}/${__dashboard.uid}?${Cluster:queryparam}&${Namespace:queryparam}&${PVC:queryparam}&var-ViewMode=1&viewPanel=61"
+        }
+      ],
       "maxDataPoints": 100,
       "options": {
         "colorMode": "none",
@@ -651,15 +667,17 @@
         "textMode": "auto",
         "wideLayout": true
       },
-      "pluginVersion": "11.5.0",
+      "pluginVersion": "7.5.17",
       "targets": [
         {
           "datasource": {
-            "type": "prometheus",
-            "uid": "P1809F7CD0C75ACF3"
-          },
+        "type": "prometheus",
+        "uid": "P1809F7CD0C75ACF3"
+      },
           "dsType": "influxdb",
-          "expr": "px_volume_iopriority{volumename=~\"[[Volumes]]\"}",
+          "editorMode": "code",
+          "exemplar": true,
+          "expr": "topk($ViewMode, max(px_volume_iopriority{cluster=~\"$Cluster\", exported_namespace=~\"$Namespace\", pvc=~\"$PVC\"}) by (exported_namespace, pvc))",
           "format": "time_series",
           "groupBy": [
             {
@@ -675,11 +693,13 @@
               "type": "fill"
             }
           ],
+          "interval": "",
           "intervalFactor": 1,
-          "legendFormat": "{{volumename}}",
+          "legendFormat": "{{exported_namespace}}/{{pvc}}/{{volumename}}",
           "measurement": "px_volume_halevel",
           "orderByTime": "ASC",
           "policy": "default",
+          "range": true,
           "refId": "A",
           "resultFormat": "time_series",
           "select": [
@@ -698,12 +718,6 @@
           ],
           "tags": [
             {
-              "key": "volumename",
-              "operator": "=~",
-              "value": "/^$Volumes$/"
-            },
-            {
-              "condition": "AND",
               "key": "cluster",
               "operator": "=~",
               "value": "/^$Cluster$/"
@@ -722,186 +736,85 @@
       "fieldConfig": {
         "defaults": {
           "color": {
-            "mode": "thresholds"
+            "mode": "palette-classic"
           },
-          "mappings": [
-            {
-              "options": {
-                "match": "null",
-                "result": {
-                  "text": "N/A"
-                }
-              },
-              "type": "special"
+          "custom": {
+            "axisLabel": "Latency (seconds)",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "gradientMode": "none",
+            "hideFrom": {
+              "tooltip": false,
+              "viz": false,
+              "legend": false
+            },
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "never",
+            "spanNulls": true,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
             }
-          ],
-          "max": 30,
-          "min": 0,
+          },
+          "mappings": [],
           "thresholds": {
             "mode": "absolute",
             "steps": [
               {
-                "color": "#299c46",
+                "color": "green",
                 "value": null
-              },
-              {
-                "color": "rgba(237, 129, 40, 0.89)",
-                "value": 15
-              },
-              {
-                "color": "#d44a3a",
-                "value": 25
               }
             ]
           },
-          "unit": "short"
+          "unit": "s"
         },
         "overrides": []
       },
       "gridPos": {
-        "h": 6,
-        "w": 4,
-        "x": 8,
-        "y": 8
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 14
       },
       "id": 79,
-      "maxDataPoints": 100,
       "options": {
-        "minVizHeight": 75,
-        "minVizWidth": 75,
-        "orientation": "horizontal",
-        "reduceOptions": {
-          "calcs": [
-            "mean"
-          ],
-          "fields": "",
-          "values": false
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
         },
-        "showThresholdLabels": false,
-        "showThresholdMarkers": true,
-        "sizing": "auto"
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
       },
-      "pluginVersion": "11.5.0",
+      "pluginVersion": "7.5.17",
       "targets": [
         {
           "datasource": {
             "type": "prometheus",
             "uid": "P1809F7CD0C75ACF3"
           },
-          "expr": "avg(px_volume_vol_read_latency_seconds{cluster=~\"[[Cluster]]\",volumename=~\"[[Volumes]]\"})",
-          "format": "time_series",
-          "hide": false,
-          "instant": false,
-          "interval": "",
-          "intervalFactor": 4,
-          "legendFormat": "",
+          "editorMode": "code",
+          "expr": "px_volume_read_latency_seconds{cluster=~\"$Cluster\", exported_namespace=~\"$Namespace\", pvc=~\"$PVC\"}",
+          "legendFormat": "{{exported_namespace}}/{{pvc}}/{{volumename}}",
+          "range": true,
           "refId": "A"
         }
       ],
-      "title": "Avg Read Latency",
-      "type": "gauge"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "P1809F7CD0C75ACF3"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "thresholds"
-          },
-          "mappings": [
-            {
-              "options": {
-                "match": "null",
-                "result": {
-                  "text": "N/A"
-                }
-              },
-              "type": "special"
-            }
-          ],
-          "max": 30,
-          "min": 0,
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "#299c46",
-                "value": null
-              },
-              {
-                "color": "rgba(237, 129, 40, 0.89)",
-                "value": 15
-              },
-              {
-                "color": "#d44a3a",
-                "value": 25
-              }
-            ]
-          },
-          "unit": "short"
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 6,
-        "w": 4,
-        "x": 12,
-        "y": 8
-      },
-      "id": 80,
-      "maxDataPoints": 100,
-      "options": {
-        "minVizHeight": 75,
-        "minVizWidth": 75,
-        "orientation": "horizontal",
-        "reduceOptions": {
-          "calcs": [
-            "mean"
-          ],
-          "fields": "/.*/",
-          "values": false
-        },
-        "showThresholdLabels": false,
-        "showThresholdMarkers": true,
-        "sizing": "auto"
-      },
-      "pluginVersion": "11.5.0",
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "P1809F7CD0C75ACF3"
-          },
-          "exemplar": true,
-          "expr": "avg(px_volume_vol_write_latency_seconds{cluster=~\"[[Cluster]]\",volumename=~\"[[Volumes]]\"})",
-          "format": "time_series",
-          "hide": false,
-          "intervalFactor": 4,
-          "legendFormat": "",
-          "range": true,
-          "refId": "B"
-        }
-      ],
-      "title": "Avg Write Latency",
-      "transformations": [
-        {
-          "id": "organize",
-          "options": {
-            "excludeByName": {
-              "Time": true
-            },
-            "includeByName": {},
-            "indexByName": {},
-            "renameByName": {
-              "avg(px_volume_vol_write_latency_seconds{cluster=~\"px-cluster-dmthin-scale\",volumename=~\"pvc-011dec86-ec10-464e-a49a-fdab7c63af5b\"})": "Avg Write Latency"
-            }
-          }
-        }
-      ],
-      "type": "gauge"
+      "title": "Read Latency",
+      "type": "timeseries"
     },
     {
       "datasource": {
@@ -914,22 +827,17 @@
             "mode": "palette-classic"
           },
           "custom": {
-            "axisBorderShow": false,
-            "axisCenteredZero": false,
-            "axisColorMode": "text",
-            "axisLabel": "",
+            "axisLabel": "Latency (seconds)",
             "axisPlacement": "auto",
             "barAlignment": 0,
-            "barWidthFactor": 0.6,
             "drawStyle": "line",
             "fillOpacity": 10,
             "gradientMode": "none",
             "hideFrom": {
-              "legend": false,
               "tooltip": false,
-              "viz": false
+              "viz": false,
+              "legend": false
             },
-            "insertNulls": false,
             "lineInterpolation": "linear",
             "lineWidth": 1,
             "pointSize": 5,
@@ -937,7 +845,7 @@
               "type": "linear"
             },
             "showPoints": "never",
-            "spanNulls": false,
+            "spanNulls": true,
             "stacking": {
               "group": "A",
               "mode": "none"
@@ -945,6 +853,88 @@
             "thresholdsStyle": {
               "mode": "off"
             }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 14
+      },
+      "id": 80,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "pluginVersion": "7.5.17",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "P1809F7CD0C75ACF3"
+          },
+          "editorMode": "code",
+          "expr": "px_volume_write_latency_seconds{cluster=~\"$Cluster\", exported_namespace=~\"$Namespace\", pvc=~\"$PVC\"}",
+          "legendFormat": "{{exported_namespace}}/{{pvc}}/{{volumename}}",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Write Latency",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "P1809F7CD0C75ACF3"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "gradientMode": "none",
+            "hideFrom": {
+              "graph": false,
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "never",
+            "spanNulls": false
           },
           "mappings": [],
           "thresholds": {
@@ -981,8 +971,12 @@
           "showLegend": true
         },
         "tooltip": {
+          "hideZeros": false,
           "mode": "single",
           "sort": "none"
+        },
+        "tooltipOptions": {
+          "mode": "single"
         }
       },
       "pluginVersion": "11.5.0",
@@ -990,12 +984,13 @@
         {
           "alias": "Disk Capacity",
           "datasource": {
-            "type": "prometheus",
-            "uid": "P1809F7CD0C75ACF3"
-          },
+        "type": "prometheus",
+        "uid": "P1809F7CD0C75ACF3"
+      },
           "dsType": "influxdb",
-          "exemplar": true,
-          "expr": "px_volume_capacity_bytes{volumename=~\"[[Volumes]]\"}",
+          "editorMode": "code",
+          "exemplar": false,
+          "expr": "px_volume_capacity_bytes{cluster=~\"$Cluster\", exported_namespace=~\"$Namespace\", pvc=~\"$PVC\"}",
           "format": "time_series",
           "groupBy": [
             {
@@ -1012,8 +1007,9 @@
             }
           ],
           "hide": false,
+          "interval": "",
           "intervalFactor": 1,
-          "legendFormat": " Capacity",
+          "legendFormat": "Capacity - {{exported_namespace}}/{{pvc}}/{{volumename}}",
           "measurement": "px_volume_capacity_bytes",
           "orderByTime": "ASC",
           "policy": "default",
@@ -1036,12 +1032,6 @@
           ],
           "tags": [
             {
-              "key": "volumename",
-              "operator": "=~",
-              "value": "/^$Volumes$/"
-            },
-            {
-              "condition": "AND",
               "key": "cluster",
               "operator": "=~",
               "value": "/^$Cluster$/"
@@ -1051,12 +1041,13 @@
         {
           "alias": "Disk Usage",
           "datasource": {
-            "type": "prometheus",
-            "uid": "P1809F7CD0C75ACF3"
-          },
+        "type": "prometheus",
+        "uid": "P1809F7CD0C75ACF3"
+      },
           "dsType": "influxdb",
-          "exemplar": true,
-          "expr": "px_volume_usage_bytes{volumename=~\"[[Volumes]]\"}",
+          "editorMode": "code",
+          "exemplar": false,
+          "expr": "px_volume_usage_bytes{cluster=~\"$Cluster\", exported_namespace=~\"$Namespace\", pvc=~\"$PVC\"}",
           "format": "time_series",
           "groupBy": [
             {
@@ -1073,8 +1064,9 @@
             }
           ],
           "hide": false,
+          "interval": "",
           "intervalFactor": 1,
-          "legendFormat": " Usage",
+          "legendFormat": "Usage - {{exported_namespace}}/{{pvc}}/{{volumename}}",
           "measurement": "px_volume_usage_bytes",
           "orderByTime": "ASC",
           "policy": "default",
@@ -1097,12 +1089,6 @@
           ],
           "tags": [
             {
-              "key": "volumename",
-              "operator": "=~",
-              "value": "/^$Volumes$/"
-            },
-            {
-              "condition": "AND",
               "key": "cluster",
               "operator": "=~",
               "value": "/^$Cluster$/"
@@ -1110,7 +1096,7 @@
           ]
         }
       ],
-      "title": "Volume Usage",
+      "title": "Volume: Used vs. Total Capacity",
       "type": "timeseries"
     },
     {
@@ -1160,6 +1146,16 @@
         "y": 11
       },
       "id": 4,
+      "links": [
+        {
+          "title": "Show All Data",
+          "url": "/d/${__dashboard.uid}/${__dashboard.uid}?${Cluster:queryparam}&${Namespace:queryparam}&${PVC:queryparam}&var-ViewMode=9999&viewPanel=4"
+        },
+        {
+          "title": "Show Top Value",
+          "url": "/d/${__dashboard.uid}/${__dashboard.uid}?${Cluster:queryparam}&${Namespace:queryparam}&${PVC:queryparam}&var-ViewMode=1&viewPanel=4"
+        }
+      ],
       "maxDataPoints": 100,
       "options": {
         "minVizHeight": 75,
@@ -1174,17 +1170,20 @@
         },
         "showThresholdLabels": false,
         "showThresholdMarkers": true,
-        "sizing": "auto"
+        "sizing": "auto",
+        "text": {}
       },
-      "pluginVersion": "11.5.0",
+      "pluginVersion": "7.5.17",
       "targets": [
         {
           "datasource": {
-            "type": "prometheus",
-            "uid": "P1809F7CD0C75ACF3"
-          },
+        "type": "prometheus",
+        "uid": "P1809F7CD0C75ACF3"
+      },
           "dsType": "influxdb",
-          "expr": "px_volume_halevel{volumename=~\"[[Volumes]]\"}",
+          "editorMode": "code",
+          "exemplar": true,
+          "expr": "topk($ViewMode, max(px_volume_halevel{cluster=~\"$Cluster\", exported_namespace=~\"$Namespace\", pvc=~\"$PVC\"}) by (exported_namespace, pvc))",
           "format": "time_series",
           "groupBy": [
             {
@@ -1200,11 +1199,13 @@
               "type": "fill"
             }
           ],
+          "interval": "",
           "intervalFactor": 1,
-          "legendFormat": "{{volumename}}",
+          "legendFormat": "{{exported_namespace}}/{{pvc}}",
           "measurement": "px_volume_halevel",
           "orderByTime": "ASC",
           "policy": "default",
+          "range": true,
           "refId": "A",
           "resultFormat": "time_series",
           "select": [
@@ -1223,12 +1224,6 @@
           ],
           "tags": [
             {
-              "key": "volumename",
-              "operator": "=~",
-              "value": "/^$Volumes$/"
-            },
-            {
-              "condition": "AND",
               "key": "cluster",
               "operator": "=~",
               "value": "/^$Cluster$/"
@@ -1250,22 +1245,18 @@
             "mode": "palette-classic"
           },
           "custom": {
-            "axisBorderShow": false,
-            "axisCenteredZero": false,
-            "axisColorMode": "text",
             "axisLabel": "",
             "axisPlacement": "auto",
             "barAlignment": 0,
-            "barWidthFactor": 0.6,
             "drawStyle": "line",
             "fillOpacity": 10,
             "gradientMode": "none",
             "hideFrom": {
+              "graph": false,
               "legend": false,
               "tooltip": false,
               "viz": false
             },
-            "insertNulls": false,
             "lineInterpolation": "linear",
             "lineWidth": 1,
             "pointSize": 5,
@@ -1273,14 +1264,7 @@
               "type": "linear"
             },
             "showPoints": "never",
-            "spanNulls": false,
-            "stacking": {
-              "group": "A",
-              "mode": "none"
-            },
-            "thresholdsStyle": {
-              "mode": "off"
-            }
+            "spanNulls": false
           },
           "mappings": [],
           "thresholds": {
@@ -1303,7 +1287,7 @@
         "h": 6,
         "w": 8,
         "x": 0,
-        "y": 14
+        "y": 22
       },
       "id": 59,
       "options": {
@@ -1318,8 +1302,12 @@
           "showLegend": true
         },
         "tooltip": {
+          "hideZeros": false,
           "mode": "single",
           "sort": "none"
+        },
+        "tooltipOptions": {
+          "mode": "single"
         }
       },
       "pluginVersion": "11.5.0",
@@ -1327,12 +1315,13 @@
         {
           "alias": "Bytes Written Throughput",
           "datasource": {
-            "type": "prometheus",
-            "uid": "P1809F7CD0C75ACF3"
-          },
+        "type": "prometheus",
+        "uid": "P1809F7CD0C75ACF3"
+      },
           "dsType": "influxdb",
-          "exemplar": true,
-          "expr": "px_volume_vol_written_bytes{volumename=~\"[[Volumes]]\"}",
+          "editorMode": "code",
+          "exemplar": false,
+          "expr": "px_volume_reads{cluster=~\"$Cluster\", exported_namespace=~\"$Namespace\", pvc=~\"$PVC\"}",
           "format": "time_series",
           "groupBy": [
             {
@@ -1349,8 +1338,9 @@
             }
           ],
           "hide": false,
+          "interval": "",
           "intervalFactor": 1,
-          "legendFormat": "No. of  Reads ",
+          "legendFormat": "No. of Reads - {{exported_namespace}}/{{pvc}}/{{volumename}}",
           "measurement": "px_volume_writethroughput",
           "orderByTime": "ASC",
           "policy": "default",
@@ -1373,12 +1363,6 @@
           ],
           "tags": [
             {
-              "key": "volumename",
-              "operator": "=~",
-              "value": "/^$Volumes$/"
-            },
-            {
-              "condition": "AND",
               "key": "cluster",
               "operator": "=~",
               "value": "/^$Cluster$/"
@@ -1388,12 +1372,13 @@
         {
           "alias": "Bytes Read Throughput",
           "datasource": {
-            "type": "prometheus",
-            "uid": "P1809F7CD0C75ACF3"
-          },
+        "type": "prometheus",
+        "uid": "P1809F7CD0C75ACF3"
+      },
           "dsType": "influxdb",
-          "exemplar": true,
-          "expr": "px_volume_num_long_writes{volumename=~\"[[Volumes]]\"}",
+          "editorMode": "code",
+          "exemplar": false,
+          "expr": "px_volume_writes{cluster=~\"$Cluster\", exported_namespace=~\"$Namespace\", pvc=~\"$PVC\"}",
           "format": "time_series",
           "groupBy": [
             {
@@ -1409,8 +1394,9 @@
               "type": "fill"
             }
           ],
+          "interval": "",
           "intervalFactor": 1,
-          "legendFormat": "No. of  Writes ",
+          "legendFormat": "No. of Writes - {{exported_namespace}}/{{pvc}}/{{volumename}}",
           "measurement": "px_volume_readthroughput",
           "orderByTime": "ASC",
           "policy": "default",
@@ -1433,12 +1419,6 @@
           ],
           "tags": [
             {
-              "key": "volumename",
-              "operator": "=~",
-              "value": "/^$Volumes$/"
-            },
-            {
-              "condition": "AND",
               "key": "cluster",
               "operator": "=~",
               "value": "/^$Cluster$/"
@@ -1450,10 +1430,6 @@
       "type": "timeseries"
     },
     {
-      "aliasColors": {},
-      "bars": false,
-      "dashLength": 10,
-      "dashes": false,
       "datasource": {
         "type": "prometheus",
         "uid": "P1809F7CD0C75ACF3"
@@ -1464,22 +1440,18 @@
             "mode": "palette-classic"
           },
           "custom": {
-            "axisBorderShow": false,
-            "axisCenteredZero": false,
-            "axisColorMode": "text",
             "axisLabel": "",
             "axisPlacement": "auto",
             "barAlignment": 0,
-            "barWidthFactor": 0.6,
             "drawStyle": "line",
             "fillOpacity": 10,
             "gradientMode": "none",
             "hideFrom": {
+              "graph": false,
               "legend": false,
               "tooltip": false,
               "viz": false
             },
-            "insertNulls": false,
             "lineInterpolation": "linear",
             "lineWidth": 1,
             "pointSize": 5,
@@ -1487,14 +1459,7 @@
               "type": "linear"
             },
             "showPoints": "never",
-            "spanNulls": false,
-            "stacking": {
-              "group": "A",
-              "mode": "none"
-            },
-            "thresholdsStyle": {
-              "mode": "off"
-            }
+            "spanNulls": false
           },
           "mappings": [],
           "thresholds": {
@@ -1513,12 +1478,11 @@
         },
         "overrides": []
       },
-      "fill": 1,
       "gridPos": {
         "h": 6,
         "w": 8,
         "x": 8,
-        "y": 14
+        "y": 22
       },
       "id": 60,
       "options": {
@@ -1534,28 +1498,26 @@
           "showLegend": true
         },
         "tooltip": {
+          "hideZeros": false,
           "mode": "single",
           "sort": "none"
+        },
+        "tooltipOptions": {
+          "mode": "single"
         }
       },
       "pluginVersion": "11.5.0",
-      "pointradius": 5,
-      "points": false,
-      "renderer": "flot",
-      "seriesOverrides": [],
-      "spaceLength": 10,
-      "stack": false,
-      "steppedLine": false,
       "targets": [
         {
           "alias": "Bytes Written Throughput",
           "datasource": {
-            "type": "prometheus",
-            "uid": "P1809F7CD0C75ACF3"
-          },
+        "type": "prometheus",
+        "uid": "P1809F7CD0C75ACF3"
+      },
           "dsType": "influxdb",
-          "exemplar": true,
-          "expr": "px_volume_iops{volumename=~\"[[Volumes]]\"}",
+          "editorMode": "code",
+          "exemplar": false,
+          "expr": "px_volume_iops{cluster=~\"$Cluster\", exported_namespace=~\"$Namespace\", pvc=~\"$PVC\"}",
           "format": "time_series",
           "groupBy": [
             {
@@ -1572,8 +1534,9 @@
             }
           ],
           "hide": false,
+          "interval": "",
           "intervalFactor": 1,
-          "legendFormat": "IOPs",
+          "legendFormat": "IOPs - {{exported_namespace}}/{{pvc}}/{{volumename}}",
           "measurement": "px_volume_writethroughput",
           "orderByTime": "ASC",
           "policy": "default",
@@ -1596,12 +1559,6 @@
           ],
           "tags": [
             {
-              "key": "volumename",
-              "operator": "=~",
-              "value": "/^$Volumes$/"
-            },
-            {
-              "condition": "AND",
               "key": "cluster",
               "operator": "=~",
               "value": "/^$Cluster$/"
@@ -1609,43 +1566,10 @@
           ]
         }
       ],
-      "thresholds": [],
-      "timeRegions": [],
       "title": "Volume IOPs",
-      "tooltip": {
-        "shared": true,
-        "sort": 0,
-        "value_type": "individual"
-      },
-      "type": "timeseries",
-      "xaxis": {
-        "mode": "time",
-        "show": true,
-        "values": []
-      },
-      "yaxes": [
-        {
-          "decimals": 0,
-          "format": "none",
-          "logBase": 1,
-          "min": "0",
-          "show": true
-        },
-        {
-          "format": "short",
-          "logBase": 1,
-          "show": false
-        }
-      ],
-      "yaxis": {
-        "align": false
-      }
+      "type": "timeseries"
     },
     {
-      "aliasColors": {},
-      "bars": false,
-      "dashLength": 10,
-      "dashes": false,
       "datasource": {
         "type": "prometheus",
         "uid": "P1809F7CD0C75ACF3"
@@ -1656,22 +1580,18 @@
             "mode": "palette-classic"
           },
           "custom": {
-            "axisBorderShow": false,
-            "axisCenteredZero": false,
-            "axisColorMode": "text",
             "axisLabel": "",
             "axisPlacement": "auto",
             "barAlignment": 0,
-            "barWidthFactor": 0.6,
             "drawStyle": "line",
             "fillOpacity": 10,
             "gradientMode": "none",
             "hideFrom": {
+              "graph": false,
               "legend": false,
               "tooltip": false,
               "viz": false
             },
-            "insertNulls": false,
             "lineInterpolation": "linear",
             "lineWidth": 1,
             "pointSize": 5,
@@ -1679,14 +1599,7 @@
               "type": "linear"
             },
             "showPoints": "never",
-            "spanNulls": false,
-            "stacking": {
-              "group": "A",
-              "mode": "none"
-            },
-            "thresholdsStyle": {
-              "mode": "off"
-            }
+            "spanNulls": false
           },
           "mappings": [],
           "thresholds": {
@@ -1710,7 +1623,7 @@
         "h": 6,
         "w": 8,
         "x": 16,
-        "y": 14
+        "y": 22
       },
       "id": 58,
       "options": {
@@ -1726,8 +1639,12 @@
           "showLegend": true
         },
         "tooltip": {
+          "hideZeros": false,
           "mode": "single",
           "sort": "none"
+        },
+        "tooltipOptions": {
+          "mode": "single"
         }
       },
       "pluginVersion": "11.5.0",
@@ -1735,12 +1652,13 @@
         {
           "alias": "Bytes Written Throughput",
           "datasource": {
-            "type": "prometheus",
-            "uid": "P1809F7CD0C75ACF3"
-          },
+        "type": "prometheus",
+        "uid": "P1809F7CD0C75ACF3"
+      },
           "dsType": "influxdb",
-          "exemplar": true,
-          "expr": "px_volume_vol_read_bytes{volumename=~\"[[Volumes]]\"}",
+          "editorMode": "code",
+          "exemplar": false,
+          "expr": "px_volume_read_bytes{cluster=~\"$Cluster\", exported_namespace=~\"$Namespace\", pvc=~\"$PVC\"}",
           "format": "time_series",
           "groupBy": [
             {
@@ -1757,8 +1675,9 @@
             }
           ],
           "hide": false,
+          "interval": "",
           "intervalFactor": 1,
-          "legendFormat": "Bytes Read ",
+          "legendFormat": "Bytes Read - {{exported_namespace}}/{{pvc}}/{{volumename}}",
           "measurement": "px_volume_writethroughput",
           "orderByTime": "ASC",
           "policy": "default",
@@ -1781,12 +1700,6 @@
           ],
           "tags": [
             {
-              "key": "volumename",
-              "operator": "=~",
-              "value": "/^$Volumes$/"
-            },
-            {
-              "condition": "AND",
               "key": "cluster",
               "operator": "=~",
               "value": "/^$Cluster$/"
@@ -1796,12 +1709,13 @@
         {
           "alias": "Bytes Read Throughput",
           "datasource": {
-            "type": "prometheus",
-            "uid": "P1809F7CD0C75ACF3"
-          },
+        "type": "prometheus",
+        "uid": "P1809F7CD0C75ACF3"
+      },
           "dsType": "influxdb",
-          "exemplar": true,
-          "expr": "px_volume_vol_read_bytes{volumename=~\"[[Volumes]]\"}",
+          "editorMode": "code",
+          "exemplar": false,
+          "expr": "px_volume_read_bytes{cluster=~\"$Cluster\", exported_namespace=~\"$Namespace\", pvc=~\"$PVC\"}",
           "format": "time_series",
           "groupBy": [
             {
@@ -1817,8 +1731,9 @@
               "type": "fill"
             }
           ],
+          "interval": "",
           "intervalFactor": 1,
-          "legendFormat": "Bytes Written ",
+          "legendFormat": "Bytes Written - {{exported_namespace}}/{{pvc}}/{{volumename}}",
           "measurement": "px_volume_readthroughput",
           "orderByTime": "ASC",
           "policy": "default",
@@ -1841,12 +1756,6 @@
           ],
           "tags": [
             {
-              "key": "volumename",
-              "operator": "=~",
-              "value": "/^$Volumes$/"
-            },
-            {
-              "condition": "AND",
               "key": "cluster",
               "operator": "=~",
               "value": "/^$Cluster$/"
@@ -1858,10 +1767,6 @@
       "type": "timeseries"
     },
     {
-      "aliasColors": {},
-      "bars": false,
-      "dashLength": 10,
-      "dashes": false,
       "datasource": {
         "type": "prometheus",
         "uid": "P1809F7CD0C75ACF3"
@@ -1872,22 +1777,18 @@
             "mode": "palette-classic"
           },
           "custom": {
-            "axisBorderShow": false,
-            "axisCenteredZero": false,
-            "axisColorMode": "text",
             "axisLabel": "",
             "axisPlacement": "auto",
             "barAlignment": 0,
-            "barWidthFactor": 0.6,
             "drawStyle": "line",
             "fillOpacity": 10,
             "gradientMode": "none",
             "hideFrom": {
+              "graph": false,
               "legend": false,
               "tooltip": false,
               "viz": false
             },
-            "insertNulls": false,
             "lineInterpolation": "linear",
             "lineWidth": 1,
             "pointSize": 5,
@@ -1895,14 +1796,7 @@
               "type": "linear"
             },
             "showPoints": "never",
-            "spanNulls": false,
-            "stacking": {
-              "group": "A",
-              "mode": "none"
-            },
-            "thresholdsStyle": {
-              "mode": "off"
-            }
+            "spanNulls": false
           },
           "mappings": [],
           "thresholds": {
@@ -1925,8 +1819,8 @@
       "gridPos": {
         "h": 6,
         "w": 8,
-        "x": 0,
-        "y": 20
+        "x": 8,
+        "y": 8
       },
       "id": 5,
       "options": {
@@ -1942,8 +1836,12 @@
           "showLegend": true
         },
         "tooltip": {
+          "hideZeros": false,
           "mode": "single",
           "sort": "none"
+        },
+        "tooltipOptions": {
+          "mode": "single"
         }
       },
       "pluginVersion": "11.5.0",
@@ -1951,12 +1849,13 @@
         {
           "alias": "Read Latency",
           "datasource": {
-            "type": "prometheus",
-            "uid": "P1809F7CD0C75ACF3"
-          },
+        "type": "prometheus",
+        "uid": "P1809F7CD0C75ACF3"
+      },
           "dsType": "influxdb",
-          "exemplar": true,
-          "expr": "px_volume_vol_read_latency_seconds{volumename=~\"[[Volumes]]\"}",
+          "editorMode": "code",
+          "exemplar": false,
+          "expr": "px_volume_read_latency_seconds{cluster=~\"$Cluster\", exported_namespace=~\"$Namespace\", pvc=~\"$PVC\"}",
           "format": "time_series",
           "groupBy": [
             {
@@ -1973,8 +1872,9 @@
             }
           ],
           "hide": false,
+          "interval": "",
           "intervalFactor": 1,
-          "legendFormat": "Read Latency",
+          "legendFormat": "Read Latency - {{exported_namespace}}/{{pvc}}/{{volumename}}",
           "measurement": "px_volume_vol_read_latency_seconds",
           "orderByTime": "ASC",
           "policy": "default",
@@ -1997,12 +1897,6 @@
           ],
           "tags": [
             {
-              "key": "volumename",
-              "operator": "=~",
-              "value": "/^$Volumes$/"
-            },
-            {
-              "condition": "AND",
               "key": "cluster",
               "operator": "=~",
               "value": "/^$Cluster$/"
@@ -2012,12 +1906,13 @@
         {
           "alias": "Write Latency",
           "datasource": {
-            "type": "prometheus",
-            "uid": "P1809F7CD0C75ACF3"
-          },
+        "type": "prometheus",
+        "uid": "P1809F7CD0C75ACF3"
+      },
           "dsType": "influxdb",
-          "exemplar": true,
-          "expr": "px_volume_vol_write_latency_seconds{volumename=~\"[[Volumes]]\"}\n",
+          "editorMode": "code",
+          "exemplar": false,
+          "expr": "px_volume_write_latency_seconds{cluster=~\"$Cluster\", exported_namespace=~\"$Namespace\", pvc=~\"$PVC\"}\n",
           "format": "time_series",
           "groupBy": [
             {
@@ -2034,8 +1929,9 @@
             }
           ],
           "hide": false,
+          "interval": "",
           "intervalFactor": 1,
-          "legendFormat": "Write Latency",
+          "legendFormat": "Write Latency - {{exported_namespace}}/{{pvc}}/{{volumename}}",
           "measurement": "px_volume_vol_write_latency_seconds",
           "orderByTime": "ASC",
           "policy": "default",
@@ -2058,12 +1954,6 @@
           ],
           "tags": [
             {
-              "key": "volumename",
-              "operator": "=~",
-              "value": "/^$Volumes$/"
-            },
-            {
-              "condition": "AND",
               "key": "cluster",
               "operator": "=~",
               "value": "/^$Cluster$/"
@@ -2085,22 +1975,18 @@
             "mode": "palette-classic"
           },
           "custom": {
-            "axisBorderShow": false,
-            "axisCenteredZero": false,
-            "axisColorMode": "text",
             "axisLabel": "",
             "axisPlacement": "auto",
             "barAlignment": 0,
-            "barWidthFactor": 0.6,
             "drawStyle": "line",
             "fillOpacity": 10,
             "gradientMode": "none",
             "hideFrom": {
+              "graph": false,
               "legend": false,
               "tooltip": false,
               "viz": false
             },
-            "insertNulls": false,
             "lineInterpolation": "linear",
             "lineWidth": 1,
             "pointSize": 5,
@@ -2108,14 +1994,7 @@
               "type": "linear"
             },
             "showPoints": "never",
-            "spanNulls": false,
-            "stacking": {
-              "group": "A",
-              "mode": "none"
-            },
-            "thresholdsStyle": {
-              "mode": "off"
-            }
+            "spanNulls": false
           },
           "mappings": [],
           "thresholds": {
@@ -2136,9 +2015,9 @@
       },
       "gridPos": {
         "h": 6,
-        "w": 8,
-        "x": 8,
-        "y": 20
+        "w": 12,
+        "x": 0,
+        "y": 28
       },
       "hideTimeOverride": true,
       "id": 57,
@@ -2155,22 +2034,28 @@
           "showLegend": true
         },
         "tooltip": {
+          "hideZeros": false,
           "mode": "single",
           "sort": "none"
+        },
+        "tooltipOptions": {
+          "mode": "single"
         }
       },
       "pluginVersion": "11.5.0",
       "targets": [
         {
           "datasource": {
-            "type": "prometheus",
-            "uid": "P1809F7CD0C75ACF3"
-          },
-          "exemplar": true,
-          "expr": "px_volume_depth_io{volumename=~\"[[Volumes]]\"}",
+        "type": "prometheus",
+        "uid": "P1809F7CD0C75ACF3"
+      },
+          "editorMode": "code",
+          "exemplar": false,
+          "expr": "px_volume_depth_io{cluster=~\"$Cluster\", exported_namespace=~\"$Namespace\", pvc=~\"$PVC\"}",
           "format": "time_series",
+          "interval": "",
           "intervalFactor": 2,
-          "legendFormat": "I/O Depth",
+          "legendFormat": "I/O Depth - {{exported_namespace}}/{{pvc}}/{{volumename}}",
           "range": true,
           "refId": "A",
           "step": 10
@@ -2191,22 +2076,18 @@
             "mode": "palette-classic"
           },
           "custom": {
-            "axisBorderShow": false,
-            "axisCenteredZero": false,
-            "axisColorMode": "text",
             "axisLabel": "",
             "axisPlacement": "auto",
             "barAlignment": 0,
-            "barWidthFactor": 0.6,
             "drawStyle": "line",
             "fillOpacity": 10,
             "gradientMode": "none",
             "hideFrom": {
+              "graph": false,
               "legend": false,
               "tooltip": false,
               "viz": false
             },
-            "insertNulls": false,
             "lineInterpolation": "linear",
             "lineWidth": 1,
             "pointSize": 5,
@@ -2214,14 +2095,7 @@
               "type": "linear"
             },
             "showPoints": "never",
-            "spanNulls": false,
-            "stacking": {
-              "group": "A",
-              "mode": "none"
-            },
-            "thresholdsStyle": {
-              "mode": "off"
-            }
+            "spanNulls": false
           },
           "mappings": [],
           "thresholds": {
@@ -2243,9 +2117,9 @@
       },
       "gridPos": {
         "h": 6,
-        "w": 8,
-        "x": 16,
-        "y": 20
+        "w": 12,
+        "x": 12,
+        "y": 28
       },
       "id": 3,
       "options": {
@@ -2261,8 +2135,12 @@
           "showLegend": true
         },
         "tooltip": {
+          "hideZeros": false,
           "mode": "single",
           "sort": "none"
+        },
+        "tooltipOptions": {
+          "mode": "single"
         }
       },
       "pluginVersion": "11.5.0",
@@ -2270,12 +2148,13 @@
         {
           "alias": "Bytes Written Throughput",
           "datasource": {
-            "type": "prometheus",
-            "uid": "P1809F7CD0C75ACF3"
-          },
+        "type": "prometheus",
+        "uid": "P1809F7CD0C75ACF3"
+      },
           "dsType": "influxdb",
-          "exemplar": true,
-          "expr": "px_volume_readthroughput{volumename=~\"[[Volumes]]\"}",
+          "editorMode": "code",
+          "exemplar": false,
+          "expr": "px_volume_readthroughput{cluster=~\"$Cluster\", exported_namespace=~\"$Namespace\", pvc=~\"$PVC\"}",
           "format": "time_series",
           "groupBy": [
             {
@@ -2292,8 +2171,9 @@
             }
           ],
           "hide": false,
+          "interval": "",
           "intervalFactor": 1,
-          "legendFormat": "Bytes Read Throughput",
+          "legendFormat": "Bytes Read Throughput - {{exported_namespace}}/{{pvc}}/{{volumename}}",
           "measurement": "px_volume_writethroughput",
           "orderByTime": "ASC",
           "policy": "default",
@@ -2316,12 +2196,6 @@
           ],
           "tags": [
             {
-              "key": "volumename",
-              "operator": "=~",
-              "value": "/^$Volumes$/"
-            },
-            {
-              "condition": "AND",
               "key": "cluster",
               "operator": "=~",
               "value": "/^$Cluster$/"
@@ -2331,12 +2205,13 @@
         {
           "alias": "Bytes Read Throughput",
           "datasource": {
-            "type": "prometheus",
-            "uid": "P1809F7CD0C75ACF3"
-          },
+        "type": "prometheus",
+        "uid": "P1809F7CD0C75ACF3"
+      },
           "dsType": "influxdb",
-          "exemplar": true,
-          "expr": "px_volume_writethroughput{volumename=~\"[[Volumes]]\"}",
+          "editorMode": "code",
+          "exemplar": false,
+          "expr": "px_volume_writethroughput{cluster=~\"$Cluster\", exported_namespace=~\"$Namespace\", pvc=~\"$PVC\"}",
           "format": "time_series",
           "groupBy": [
             {
@@ -2352,8 +2227,9 @@
               "type": "fill"
             }
           ],
+          "interval": "",
           "intervalFactor": 1,
-          "legendFormat": "Bytes Written Throughput",
+          "legendFormat": "Bytes Written Throughput - {{exported_namespace}}/{{pvc}}/{{volumename}}",
           "measurement": "px_volume_readthroughput",
           "orderByTime": "ASC",
           "policy": "default",
@@ -2376,12 +2252,6 @@
           ],
           "tags": [
             {
-              "key": "volumename",
-              "operator": "=~",
-              "value": "/^$Volumes$/"
-            },
-            {
-              "condition": "AND",
               "key": "cluster",
               "operator": "=~",
               "value": "/^$Cluster$/"
@@ -2394,11 +2264,15 @@
     },
     {
       "collapsed": false,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "P1809F7CD0C75ACF3"
+      },
       "gridPos": {
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 26
+        "y": 34
       },
       "id": 86,
       "panels": [],
@@ -2453,7 +2327,7 @@
         "h": 3,
         "w": 4,
         "x": 0,
-        "y": 27
+        "y": 35
       },
       "id": 93,
       "maxDataPoints": 100,
@@ -2461,7 +2335,7 @@
         "colorMode": "value",
         "graphMode": "none",
         "justifyMode": "auto",
-        "orientation": "horizontal",
+        "orientation": "vertical",
         "percentChangeColorMode": "standard",
         "reduceOptions": {
           "calcs": [
@@ -2471,19 +2345,28 @@
           "values": false
         },
         "showPercentChange": false,
-        "textMode": "auto",
+        "text": {
+          "titleSize": 12,
+          "valueSize": 18
+        },
+        "textMode": "value_and_name",
         "wideLayout": true
       },
-      "pluginVersion": "11.5.0",
+      "pluginVersion": "7.5.17",
       "targets": [
         {
           "datasource": {
-            "type": "prometheus",
-            "uid": "P1809F7CD0C75ACF3"
-          },
-          "expr": "px_backup_stats_status{volumename=~\"[[Volumes]]\"}",
+        "type": "prometheus",
+        "uid": "P1809F7CD0C75ACF3"
+      },
+          "editorMode": "code",
+          "exemplar": false,
+          "expr": "px_backup_stats_backup_status{cluster=~\"$Cluster\"}",
           "format": "time_series",
+          "instant": false,
           "intervalFactor": 1,
+          "legendFormat": "{{volumename}}",
+          "range": true,
           "refId": "A"
         }
       ],
@@ -2501,22 +2384,18 @@
             "mode": "palette-classic"
           },
           "custom": {
-            "axisBorderShow": false,
-            "axisCenteredZero": false,
-            "axisColorMode": "text",
             "axisLabel": "",
             "axisPlacement": "auto",
             "barAlignment": 0,
-            "barWidthFactor": 0.6,
             "drawStyle": "line",
             "fillOpacity": 0,
             "gradientMode": "none",
             "hideFrom": {
+              "graph": false,
               "legend": false,
               "tooltip": false,
               "viz": false
             },
-            "insertNulls": false,
             "lineInterpolation": "linear",
             "lineWidth": 1,
             "pointSize": 5,
@@ -2524,14 +2403,7 @@
               "type": "linear"
             },
             "showPoints": "auto",
-            "spanNulls": false,
-            "stacking": {
-              "group": "A",
-              "mode": "none"
-            },
-            "thresholdsStyle": {
-              "mode": "off"
-            }
+            "spanNulls": false
           },
           "mappings": [],
           "thresholds": {
@@ -2555,7 +2427,7 @@
         "h": 5,
         "w": 10,
         "x": 4,
-        "y": 27
+        "y": 35
       },
       "id": 90,
       "options": {
@@ -2567,20 +2439,25 @@
           "showLegend": true
         },
         "tooltip": {
+          "hideZeros": false,
           "mode": "single",
           "sort": "none"
+        },
+        "tooltipOptions": {
+          "mode": "single"
         }
       },
       "pluginVersion": "11.5.0",
       "targets": [
         {
           "datasource": {
-            "type": "prometheus",
-            "uid": "P1809F7CD0C75ACF3"
-          },
-          "exemplar": true,
-          "expr": "px_backup_stats_duration_seconds{volumename=~\"[[Volumes]]\"}",
+        "type": "prometheus",
+        "uid": "P1809F7CD0C75ACF3"
+      },
+          "exemplar": false,
+          "expr": "px_backup_stats_backup_duration_seconds{cluster=~\"$Cluster\"} > 0",
           "format": "time_series",
+          "interval": "",
           "intervalFactor": 1,
           "legendFormat": "{{volumename}}",
           "range": true,
@@ -2633,7 +2510,7 @@
         "h": 3,
         "w": 4,
         "x": 0,
-        "y": 30
+        "y": 38
       },
       "id": 92,
       "maxDataPoints": 100,
@@ -2641,7 +2518,7 @@
         "colorMode": "none",
         "graphMode": "area",
         "justifyMode": "auto",
-        "orientation": "horizontal",
+        "orientation": "vertical",
         "percentChangeColorMode": "standard",
         "reduceOptions": {
           "calcs": [
@@ -2651,20 +2528,23 @@
           "values": false
         },
         "showPercentChange": false,
+        "text": {},
         "textMode": "auto",
         "wideLayout": true
       },
-      "pluginVersion": "11.5.0",
+      "pluginVersion": "7.5.17",
       "targets": [
         {
           "datasource": {
-            "type": "prometheus",
-            "uid": "P1809F7CD0C75ACF3"
-          },
-          "exemplar": true,
-          "expr": "px_backup_stats_duration_seconds{volumename=~\"[[Volumes]]\"}",
+        "type": "prometheus",
+        "uid": "P1809F7CD0C75ACF3"
+      },
+          "exemplar": false,
+          "expr": "px_backup_stats_backup_duration_seconds{cluster=~\"$Cluster\"} > 0",
           "format": "time_series",
+          "interval": "",
           "intervalFactor": 1,
+          "legendFormat": "{{volumename}}",
           "range": true,
           "refId": "A"
         }
@@ -2683,22 +2563,18 @@
             "mode": "palette-classic"
           },
           "custom": {
-            "axisBorderShow": false,
-            "axisCenteredZero": false,
-            "axisColorMode": "text",
             "axisLabel": "",
             "axisPlacement": "auto",
             "barAlignment": 0,
-            "barWidthFactor": 0.6,
             "drawStyle": "line",
             "fillOpacity": 0,
             "gradientMode": "none",
             "hideFrom": {
+              "graph": false,
               "legend": false,
               "tooltip": false,
               "viz": false
             },
-            "insertNulls": false,
             "lineInterpolation": "linear",
             "lineWidth": 1,
             "pointSize": 5,
@@ -2706,14 +2582,7 @@
               "type": "linear"
             },
             "showPoints": "auto",
-            "spanNulls": false,
-            "stacking": {
-              "group": "A",
-              "mode": "none"
-            },
-            "thresholdsStyle": {
-              "mode": "off"
-            }
+            "spanNulls": false
           },
           "mappings": [],
           "thresholds": {
@@ -2737,7 +2606,7 @@
         "h": 5,
         "w": 10,
         "x": 4,
-        "y": 32
+        "y": 40
       },
       "id": 91,
       "options": {
@@ -2749,20 +2618,25 @@
           "showLegend": true
         },
         "tooltip": {
+          "hideZeros": false,
           "mode": "single",
           "sort": "none"
+        },
+        "tooltipOptions": {
+          "mode": "single"
         }
       },
       "pluginVersion": "11.5.0",
       "targets": [
         {
           "datasource": {
-            "type": "prometheus",
-            "uid": "P1809F7CD0C75ACF3"
-          },
-          "exemplar": true,
-          "expr": "px_backup_stats_size{volumename=~\"[[Volumes]]\"}",
+        "type": "prometheus",
+        "uid": "P1809F7CD0C75ACF3"
+      },
+          "exemplar": false,
+          "expr": "px_backup_stats_backup_size{cluster=~\"$Cluster\"}",
           "format": "time_series",
+          "interval": "",
           "intervalFactor": 1,
           "legendFormat": "{{volumename}}",
           "range": true,
@@ -2815,7 +2689,7 @@
         "h": 3,
         "w": 4,
         "x": 0,
-        "y": 33
+        "y": 41
       },
       "id": 88,
       "maxDataPoints": 100,
@@ -2823,7 +2697,7 @@
         "colorMode": "none",
         "graphMode": "area",
         "justifyMode": "auto",
-        "orientation": "horizontal",
+        "orientation": "vertical",
         "percentChangeColorMode": "standard",
         "reduceOptions": {
           "calcs": [
@@ -2833,19 +2707,21 @@
           "values": false
         },
         "showPercentChange": false,
+        "text": {},
         "textMode": "auto",
         "wideLayout": true
       },
-      "pluginVersion": "11.5.0",
+      "pluginVersion": "7.5.17",
       "targets": [
         {
           "datasource": {
-            "type": "prometheus",
-            "uid": "P1809F7CD0C75ACF3"
-          },
-          "expr": "px_backup_stats_size{volumename=~\"[[Volumes]]\"}",
+        "type": "prometheus",
+        "uid": "P1809F7CD0C75ACF3"
+      },
+          "expr": "px_backup_stats_backup_size{cluster=~\"$Cluster\"}",
           "format": "time_series",
           "intervalFactor": 1,
+          "legendFormat": "{{volumename}}",
           "refId": "A"
         }
       ],
@@ -2853,39 +2729,131 @@
       "type": "stat"
     }
   ],
-  "preload": false,
-  "refresh": false,
-  "schemaVersion": 19,
+  "refresh": "5s",
+  "schemaVersion": 27,
+  "style": "dark",
   "tags": [],
   "templating": {
     "list": [
       {
+        "allValue": null,
         "current": {},
-        "datasource": "prometheus",
-        "definition": "",
+        "datasource": {
+        "type": "prometheus",
+        "uid": "P1809F7CD0C75ACF3"
+      },
+        "definition": "label_values(px_cluster_cpu_percent,cluster)",
+        "description": null,
+        "error": null,
+        "hide": 0,
         "includeAll": false,
         "label": "Cluster",
+        "multi": false,
         "name": "Cluster",
         "options": [],
-        "query": "px_cluster_cpu_percent",
-        "refresh": 1,
-        "regex": "/.*cluster=\"([^\"]*).*/",
-        "type": "query"
+        "query": {
+          "qryType": 1,
+          "query": "label_values(px_cluster_cpu_percent,cluster)",
+          "refId": "PrometheusVariableQueryEditor-VariableQuery"
+        },
+        "refresh": 2,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 0,
+        "tagValuesQuery": "",
+        "tags": [],
+        "tagsQuery": "",
+        "type": "query",
+        "useTags": false
       },
       {
+        "allValue": null,
+        "allowCustomValue": false,
         "current": {},
-        "datasource": "prometheus",
-        "definition": "",
+        "datasource": {
+        "type": "prometheus",
+        "uid": "P1809F7CD0C75ACF3"
+      },
+        "definition": "label_values(px_volume_usage_bytes{cluster=~\"$Cluster\"},exported_namespace)",
+        "description": null,
+        "error": null,
+        "hide": 0,
         "includeAll": false,
-        "label": "Volume Name",
+        "label": "Namespace",
         "multi": true,
-        "name": "Volumes",
+        "name": "Namespace",
         "options": [],
-        "query": "px_volume_depth_io {cluster=\"[[Cluster]]\"}",
-        "refresh": 1,
-        "regex": "/.*volumename=\"([^\"]*).*/",
+        "query": {
+          "qryType": 1,
+          "query": "label_values(px_volume_usage_bytes{cluster=~\"$Cluster\"},exported_namespace)",
+          "refId": "PrometheusVariableQueryEditor-VariableQuery"
+        },
+        "refresh": 2,
+        "regex": "",
+        "skipUrlSync": false,
         "sort": 1,
-        "type": "query"
+        "tagValuesQuery": "",
+        "tags": [],
+        "tagsQuery": "",
+        "type": "query",
+        "useTags": false
+      },
+      {
+        "allValue": null,
+        "allowCustomValue": false,
+        "current": {},
+        "datasource": {
+        "type": "prometheus",
+        "uid": "P1809F7CD0C75ACF3"
+      },
+        "definition": "label_values(px_volume_usage_bytes{cluster=~\"$Cluster\", exported_namespace=~\"$Namespace\"},pvc)",
+        "description": null,
+        "error": null,
+        "hide": 0,
+        "includeAll": false,
+        "label": "PVC Name",
+        "multi": true,
+        "name": "PVC",
+        "options": [],
+        "query": {
+          "qryType": 1,
+          "query": "label_values(px_volume_usage_bytes{cluster=~\"$Cluster\", exported_namespace=~\"$Namespace\"},pvc)",
+          "refId": "PrometheusVariableQueryEditor-VariableQuery"
+        },
+        "refresh": 2,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 1,
+        "tagValuesQuery": "",
+        "tags": [],
+        "tagsQuery": "",
+        "type": "query",
+        "useTags": false
+      },
+      {
+        "current": {
+          "selected": true,
+          "text": "Top K",
+          "value": "1"
+        },
+        "hide": 2,
+        "label": null,
+        "name": "ViewMode",
+        "options": [
+          {
+            "selected": true,
+            "text": "Top K",
+            "value": "1"
+          },
+          {
+            "selected": false,
+            "text": "All Data",
+            "value": "9999"
+          }
+        ],
+        "query": "Top K : 1, All Data : 9999",
+        "skipUrlSync": false,
+        "type": "custom"
       }
     ]
   },
@@ -2893,34 +2861,9 @@
     "from": "now-3h",
     "to": "now"
   },
-  "timepicker": {
-    "refresh_intervals": [
-      "5s",
-      "10s",
-      "30s",
-      "1m",
-      "5m",
-      "15m",
-      "30m",
-      "1h",
-      "2h",
-      "1d"
-    ],
-    "time_options": [
-      "5m",
-      "15m",
-      "1h",
-      "6h",
-      "12h",
-      "24h",
-      "2d",
-      "7d",
-      "30d"
-    ]
-  },
+  "timepicker": {},
   "timezone": "",
-  "title": "Portworx Volume Dashboard",
-  "uid": "portworx-volume-dashboard",
-  "version": 1,
-  "weekStart": ""
+  "title": "Portworx Volume Dashboard Revised",
+  "uid": "portworx-volume-dashboard-revised",
+  "version": 23
 }
