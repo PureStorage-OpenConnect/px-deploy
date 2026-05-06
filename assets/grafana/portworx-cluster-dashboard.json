@@ -175,9 +175,9 @@
       "targets": [
         {
           "datasource": {
-            "type": "prometheus",
-            "uid": "P1809F7CD0C75ACF3"
-          },
+        "type": "prometheus",
+        "uid": "P1809F7CD0C75ACF3"
+      },
           "expr": "sum(px_cluster_disk_utilized_bytes{cluster=~\"[[Cluster]]\"})/sum(px_cluster_disk_total_bytes{cluster=~\"[[Cluster]]\"})",
           "format": "time_series",
           "intervalFactor": 1,
@@ -263,9 +263,9 @@
       "targets": [
         {
           "datasource": {
-            "type": "prometheus",
-            "uid": "P1809F7CD0C75ACF3"
-          },
+        "type": "prometheus",
+        "uid": "P1809F7CD0C75ACF3"
+      },
           "expr": "sum(px_cluster_disk_utilized_bytes{cluster=~\"[[Cluster]]\"})",
           "format": "time_series",
           "intervalFactor": 1,
@@ -344,9 +344,9 @@
       "targets": [
         {
           "datasource": {
-            "type": "prometheus",
-            "uid": "P1809F7CD0C75ACF3"
-          },
+        "type": "prometheus",
+        "uid": "P1809F7CD0C75ACF3"
+      },
           "editorMode": "code",
           "expr": "avg(px_cluster_cpu_percent{cluster=~\"[[Cluster]]\"})",
           "format": "time_series",
@@ -424,9 +424,9 @@
       "targets": [
         {
           "datasource": {
-            "type": "prometheus",
-            "uid": "P1809F7CD0C75ACF3"
-          },
+        "type": "prometheus",
+        "uid": "P1809F7CD0C75ACF3"
+      },
           "expr": "min(px_cluster_status_cluster_size{cluster=~\"[[Cluster]]\"}) ",
           "format": "time_series",
           "intervalFactor": 1,
@@ -521,9 +521,9 @@
       "targets": [
         {
           "datasource": {
-            "type": "prometheus",
-            "uid": "P1809F7CD0C75ACF3"
-          },
+        "type": "prometheus",
+        "uid": "P1809F7CD0C75ACF3"
+      },
           "expr": "max(px_cluster_status_cluster_quorum{cluster=~\"[[Cluster]]\"})",
           "format": "time_series",
           "interval": "",
@@ -611,9 +611,9 @@
       "targets": [
         {
           "datasource": {
-            "type": "prometheus",
-            "uid": "P1809F7CD0C75ACF3"
-          },
+        "type": "prometheus",
+        "uid": "P1809F7CD0C75ACF3"
+      },
           "expr": "min(px_cluster_status_nodes_online{cluster=~\"[[Cluster]]\"}) ",
           "format": "time_series",
           "intervalFactor": 1,
@@ -691,9 +691,9 @@
       "targets": [
         {
           "datasource": {
-            "type": "prometheus",
-            "uid": "P1809F7CD0C75ACF3"
-          },
+        "type": "prometheus",
+        "uid": "P1809F7CD0C75ACF3"
+      },
           "expr": "min(px_cluster_status_storage_nodes_online{cluster=~\"[[Cluster]]\"})",
           "format": "time_series",
           "intervalFactor": 1,
@@ -786,9 +786,9 @@
       "targets": [
         {
           "datasource": {
-            "type": "prometheus",
-            "uid": "P1809F7CD0C75ACF3"
-          },
+        "type": "prometheus",
+        "uid": "P1809F7CD0C75ACF3"
+      },
           "expr": "min(px_cluster_status_cluster_size{cluster=\"[[Cluster]]\"})-min(px_cluster_status_nodes_online{cluster=\"[[Cluster]]\"})",
           "format": "time_series",
           "instant": false,
@@ -852,7 +852,7 @@
           "color": "rgba(255,0,255,0.7)"
         },
         "filterValues": {
-          "le": 1e-9
+          "le": 1e-09
         },
         "legend": {
           "show": true,
@@ -877,9 +877,9 @@
       "targets": [
         {
           "datasource": {
-            "type": "prometheus",
-            "uid": "P1809F7CD0C75ACF3"
-          },
+        "type": "prometheus",
+        "uid": "P1809F7CD0C75ACF3"
+      },
           "expr": "px_cluster_cpu_percent{cluster =~ \"[[Cluster]]\"}",
           "format": "time_series",
           "interval": "5m",
@@ -943,7 +943,7 @@
           "color": "rgba(255,0,255,0.7)"
         },
         "filterValues": {
-          "le": 1e-9
+          "le": 1e-09
         },
         "legend": {
           "show": true,
@@ -968,9 +968,9 @@
       "targets": [
         {
           "datasource": {
-            "type": "prometheus",
-            "uid": "P1809F7CD0C75ACF3"
-          },
+        "type": "prometheus",
+        "uid": "P1809F7CD0C75ACF3"
+      },
           "expr": "px_cluster_memory_utilized_percent{cluster =~ \"[[Cluster]]\"}",
           "format": "time_series",
           "interval": "5m",
@@ -991,7 +991,10 @@
     "list": [
       {
         "current": {},
-        "datasource": "prometheus",
+        "datasource": {
+        "type": "prometheus",
+        "uid": "P1809F7CD0C75ACF3"
+      },
         "hide": 1,
         "includeAll": false,
         "name": "Cluster",

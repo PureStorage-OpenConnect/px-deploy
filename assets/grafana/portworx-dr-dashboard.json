@@ -37,7 +37,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${datasource}"
+        "uid": "P1809F7CD0C75ACF3"
       },
       "description": "Displays the total count of namespaces that are currently protected by Stork across the selected cluster(s). This metric aggregates all namespaces that are being migrated through **active** migration schedules.",
       "fieldConfig": {
@@ -121,7 +121,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${datasource}"
+            "uid": "P1809F7CD0C75ACF3"
           },
           "editorMode": "code",
           "exemplar": false,
@@ -136,7 +136,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${datasource}"
+            "uid": "P1809F7CD0C75ACF3"
           },
           "editorMode": "code",
           "exemplar": false,
@@ -202,7 +202,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${datasource}"
+        "uid": "P1809F7CD0C75ACF3"
       },
       "description": "Displays the distribution of active migrations across different status states in the selected cluster, namespace(s), and migration schedule(s). This panel shows how many migrations are currently in each status category, providing a quick overview of migration health and progress.",
       "fieldConfig": {
@@ -314,7 +314,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${datasource}"
+            "uid": "P1809F7CD0C75ACF3"
           },
           "editorMode": "code",
           "exemplar": false,
@@ -332,7 +332,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${datasource}"
+        "uid": "P1809F7CD0C75ACF3"
       },
       "description": "Displays the total count of successfully completed migrations (including both fully successful and partially successful migrations) within the selected time range.",
       "fieldConfig": {
@@ -383,7 +383,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${datasource}"
+            "uid": "P1809F7CD0C75ACF3"
           },
           "editorMode": "code",
           "exemplar": false,
@@ -401,7 +401,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${datasource}"
+        "uid": "P1809F7CD0C75ACF3"
       },
       "description": "Displays the total count of failed migrations grouped by namespace within the selected time range.",
       "fieldConfig": {
@@ -453,7 +453,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${datasource}"
+            "uid": "P1809F7CD0C75ACF3"
           },
           "editorMode": "code",
           "expr": "floor(sum(increase(stork_migration_completed_total{cluster=~\"$cluster\",status=\"Failed\",schedule=~\"$migrationschedule\",exported_namespace=~\"$namespace\"}[$__range])))",
@@ -468,7 +468,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${datasource}"
+        "uid": "P1809F7CD0C75ACF3"
       },
       "description": "Displays the percentage of migrations that completed successfully or with partial success status over the last 7 days.",
       "fieldConfig": {
@@ -533,7 +533,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${datasource}"
+            "uid": "P1809F7CD0C75ACF3"
           },
           "editorMode": "code",
           "expr": "clamp_max(\n(\nfloor(sum(increase(stork_migration_completed_total{status=~\"Successful|PartialSuccess\", cluster=~\"$cluster\",exported_namespace=~\"$namespace\",schedule=~\"$migrationschedule\"}[7d])))\n/\nceil(sum(increase(stork_migration_created_total{cluster=~\"$cluster\",exported_namespace=~\"$namespace\",schedule=~\"$migrationschedule\"}[7d])))\n) * 100,\n100)",
@@ -548,7 +548,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${datasource}"
+        "uid": "P1809F7CD0C75ACF3"
       },
       "description": "Visual timeline showing scheduler and storage status changes for all ClusterPairs. Green (Ready) is healthy, Red (Error) requires immediate attention, Orange (Degraded) needs investigation.",
       "fieldConfig": {
@@ -694,7 +694,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${datasource}"
+            "uid": "P1809F7CD0C75ACF3"
           },
           "editorMode": "code",
           "exemplar": false,
@@ -707,7 +707,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${datasource}"
+            "uid": "P1809F7CD0C75ACF3"
           },
           "editorMode": "code",
           "exemplar": false,
@@ -725,7 +725,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${datasource}"
+        "uid": "P1809F7CD0C75ACF3"
       },
       "description": "Displays the distribution of migration schedules grouped by their operational status (active or suspended) across the selected cluster(s) and namespace(s).",
       "fieldConfig": {
@@ -806,7 +806,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${datasource}"
+            "uid": "P1809F7CD0C75ACF3"
           },
           "editorMode": "code",
           "exemplar": false,
@@ -823,7 +823,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${datasource}"
+        "uid": "P1809F7CD0C75ACF3"
       },
       "description": "Displays the average total migration duration (in seconds) for migrations completed over the last 7 days.",
       "fieldConfig": {
@@ -874,7 +874,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${datasource}"
+            "uid": "P1809F7CD0C75ACF3"
           },
           "editorMode": "code",
           "expr": "(\n  sum(increase(stork_migration_duration_seconds_sum{stage=\"volume\", cluster=~\"$cluster\", exported_namespace=~\"$namespace\",schedule=~\"$migrationschedule\"}[7d])) +\n  sum(increase(stork_migration_duration_seconds_sum{stage=\"resource\", cluster=~\"$cluster\", exported_namespace=~\"$namespace\",schedule=~\"$migrationschedule\"}[7d]))\n) \n/ \n(sum(increase(stork_migration_duration_seconds_count{stage=\"volume\", cluster=~\"$cluster\", exported_namespace=~\"$namespace\",schedule=~\"$migrationschedule\"}[7d])) > 0)",
@@ -889,7 +889,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${datasource}"
+        "uid": "P1809F7CD0C75ACF3"
       },
       "description": "Total number of ClusterPairs in the selected namespace(s)",
       "fieldConfig": {
@@ -939,7 +939,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${datasource}"
+            "uid": "P1809F7CD0C75ACF3"
           },
           "editorMode": "code",
           "expr": "count(stork_clusterpair_scheduler_status{exported_namespace=~\"$namespace\"})",
@@ -954,7 +954,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${datasource}"
+        "uid": "P1809F7CD0C75ACF3"
       },
       "description": "Displays the status of the most recent migration run for each migration schedule present in the cluster.",
       "fieldConfig": {
@@ -1052,7 +1052,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${datasource}"
+            "uid": "P1809F7CD0C75ACF3"
           },
           "editorMode": "code",
           "exemplar": false,
@@ -1120,7 +1120,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${datasource}"
+        "uid": "P1809F7CD0C75ACF3"
       },
       "description": "Displays the time elapsed (in minutes) since the last successful migration for each migration schedule and namespace combination. Marks the value in RED if the time exceeds 15mins.",
       "fieldConfig": {
@@ -1220,7 +1220,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${datasource}"
+            "uid": "P1809F7CD0C75ACF3"
           },
           "editorMode": "code",
           "exemplar": false,
@@ -1234,7 +1234,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${datasource}"
+            "uid": "P1809F7CD0C75ACF3"
           },
           "editorMode": "code",
           "exemplar": false,
@@ -1292,7 +1292,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${datasource}"
+        "uid": "P1809F7CD0C75ACF3"
       },
       "description": "This panel shows how many migrations are currently in each status category (Successful, Failed, InProgress, etc.), providing a real-time overview of migration health and activity.",
       "fieldConfig": {
@@ -1439,7 +1439,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${datasource}"
+            "uid": "P1809F7CD0C75ACF3"
           },
           "editorMode": "code",
           "expr": "count(stork_migration_status{cluster=~\"$cluster\",exported_namespace=~\"$namespace\",schedule=~\"$migrationschedule\"} == 1) by (status)",
@@ -1454,7 +1454,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${datasource}"
+        "uid": "P1809F7CD0C75ACF3"
       },
       "description": "Displays the total migration duration (in seconds) for each migration, broken down by migration name and namespace.",
       "fieldConfig": {
@@ -1539,7 +1539,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${datasource}"
+            "uid": "P1809F7CD0C75ACF3"
           },
           "editorMode": "code",
           "expr": "sum by (name, exported_namespace) (stork_migration_duration{exported_namespace=~\"$namespace\",cluster=~\"$cluster\",schedule=~\"$migrationschedule\"})",
@@ -1554,7 +1554,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${datasource}"
+        "uid": "P1809F7CD0C75ACF3"
       },
       "description": "Displays a side-by-side comparison of migration durations broken down by stage (volume and resource) for each migration. This bar chart visualization shows how much time each migration spent in the volume migration stage versus the resource migration stage, making it easy to identify which phase takes longer and spot performance bottlenecks.",
       "fieldConfig": {
@@ -1666,7 +1666,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${datasource}"
+            "uid": "P1809F7CD0C75ACF3"
           },
           "editorMode": "code",
           "exemplar": false,
@@ -1680,7 +1680,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${datasource}"
+            "uid": "P1809F7CD0C75ACF3"
           },
           "editorMode": "code",
           "expr": "stork_migration_duration{cluster=~\"$cluster\",exported_namespace=~\"$namespace\",stage=\"resource\",schedule=~\"$migrationschedule\"}",
@@ -1779,7 +1779,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${datasource}"
+        "uid": "P1809F7CD0C75ACF3"
       },
       "description": "Displays the 90th percentile of migration duration (in seconds) for each namespace and stage combination. This metric shows the duration threshold below which 90% of migrations complete, helping you understand typical migration performance.",
       "fieldConfig": {
@@ -1861,7 +1861,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${datasource}"
+            "uid": "P1809F7CD0C75ACF3"
           },
           "editorMode": "code",
           "exemplar": false,
@@ -1897,7 +1897,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${datasource}"
+        "uid": "P1809F7CD0C75ACF3"
       },
       "description": "Displays the data transfer rate (bytes per second) for each individual migration. This metric shows the throughput achieved during the volume migration stage, calculated by dividing the total bytes transferred by the volume migration duration.",
       "fieldConfig": {
@@ -1983,7 +1983,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${datasource}"
+            "uid": "P1809F7CD0C75ACF3"
           },
           "editorMode": "code",
           "expr": "stork_migration_transfer_rate{cluster=~\"$cluster\",exported_namespace=~\"$namespace\",schedule=~\"$migrationschedule\"}",
@@ -1998,7 +1998,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${datasource}"
+        "uid": "P1809F7CD0C75ACF3"
       },
       "description": "Displays the average data transfer rate (bytes per second) across all migrations within the selected time range. This metric calculates the overall throughput efficiency by dividing the total bytes transferred by the total time spent in the volume migration stage across all completed migrations.",
       "fieldConfig": {
@@ -2081,7 +2081,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${datasource}"
+            "uid": "P1809F7CD0C75ACF3"
           },
           "editorMode": "code",
           "expr": "(\n  sum(increase(stork_migration_transferred_bytes_sum{cluster=~\"$cluster\",schedule=~\"$migrationschedule\"}[$__range]))\n  /\n  (sum(increase(stork_migration_duration_seconds_sum{cluster=~\"$cluster\",schedule=~\"$migrationschedule\",stage=\"volume\"}[$__range])) > 0)\n)",
@@ -2096,7 +2096,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${datasource}"
+        "uid": "P1809F7CD0C75ACF3"
       },
       "description": "Displays the number of volumes in different migration states for each migration. This panel uses two queries to show a comparison between planned volumes (total volumes to be migrated) and successfully migrated volumes, helping you track volume migration progress.",
       "fieldConfig": {
@@ -2245,7 +2245,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${datasource}"
+            "uid": "P1809F7CD0C75ACF3"
           },
           "editorMode": "code",
           "exemplar": false,
@@ -2260,7 +2260,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${datasource}"
+            "uid": "P1809F7CD0C75ACF3"
           },
           "editorMode": "code",
           "exemplar": false,
@@ -2275,7 +2275,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${datasource}"
+            "uid": "P1809F7CD0C75ACF3"
           },
           "editorMode": "code",
           "exemplar": false,
@@ -2444,7 +2444,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${datasource}"
+        "uid": "P1809F7CD0C75ACF3"
       },
       "description": "Displays the number of resources in different migration states for each migration. This panel uses two queries to show a comparison between planned resources (total resources to be migrated) and successfully migrated resources, helping you track resources migration progress.",
       "fieldConfig": {
@@ -2592,7 +2592,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${datasource}"
+            "uid": "P1809F7CD0C75ACF3"
           },
           "editorMode": "code",
           "exemplar": false,
@@ -2607,7 +2607,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${datasource}"
+            "uid": "P1809F7CD0C75ACF3"
           },
           "editorMode": "code",
           "exemplar": false,
@@ -2622,7 +2622,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${datasource}"
+            "uid": "P1809F7CD0C75ACF3"
           },
           "editorMode": "code",
           "exemplar": false,
@@ -2791,7 +2791,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${datasource}"
+        "uid": "P1809F7CD0C75ACF3"
       },
       "description": "Comprehensive migration overview table showing migration name, namespace, schedule, status, duration, resource/volume counts, and completion timestamp",
       "fieldConfig": {
@@ -3021,7 +3021,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${datasource}"
+            "uid": "P1809F7CD0C75ACF3"
           },
           "editorMode": "code",
           "exemplar": false,
@@ -3036,7 +3036,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${datasource}"
+            "uid": "P1809F7CD0C75ACF3"
           },
           "editorMode": "code",
           "exemplar": false,
@@ -3051,7 +3051,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${datasource}"
+            "uid": "P1809F7CD0C75ACF3"
           },
           "editorMode": "code",
           "exemplar": false,
@@ -3066,7 +3066,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${datasource}"
+            "uid": "P1809F7CD0C75ACF3"
           },
           "editorMode": "code",
           "exemplar": false,
@@ -3081,7 +3081,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${datasource}"
+            "uid": "P1809F7CD0C75ACF3"
           },
           "editorMode": "code",
           "exemplar": false,
@@ -3331,7 +3331,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${datasource}"
+        "uid": "P1809F7CD0C75ACF3"
       },
       "description": "Time Since Last Successful Failover Operation",
       "fieldConfig": {
@@ -3383,7 +3383,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${datasource}"
+            "uid": "P1809F7CD0C75ACF3"
           },
           "editorMode": "code",
           "expr": "max(\n  stork_action_completion_timestamp_seconds{\n    cluster=~\"$cluster\",\n    exported_namespace=~\"$namespace\",\n    type=\"failover\",\n    status=\"Successful\"\n  }\n) * 1000",
@@ -3398,7 +3398,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${datasource}"
+        "uid": "P1809F7CD0C75ACF3"
       },
       "description": "Time Since Last Successful Failback Operation",
       "fieldConfig": {
@@ -3449,7 +3449,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${datasource}"
+            "uid": "P1809F7CD0C75ACF3"
           },
           "editorMode": "code",
           "exemplar": false,
@@ -3467,7 +3467,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${datasource}"
+        "uid": "P1809F7CD0C75ACF3"
       },
       "description": "Shows the distribution of actions across different completion states: Successful, Failed, RollbackSuccessful, RollbackFailed, and In Progress.",
       "fieldConfig": {
@@ -3564,7 +3564,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${datasource}"
+            "uid": "P1809F7CD0C75ACF3"
           },
           "editorMode": "code",
           "exemplar": false,
@@ -3582,7 +3582,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${datasource}"
+        "uid": "P1809F7CD0C75ACF3"
       },
       "description": "Shows the distribution of Failback actions across different completion states: Successful, Failed, RollbackSuccessful, RollbackFailed, and In Progress.",
       "fieldConfig": {
@@ -3679,7 +3679,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${datasource}"
+            "uid": "P1809F7CD0C75ACF3"
           },
           "editorMode": "code",
           "exemplar": false,
@@ -3697,7 +3697,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${datasource}"
+        "uid": "P1809F7CD0C75ACF3"
       },
       "description": "Count of total Failover operations created in the selected time range",
       "fieldConfig": {
@@ -3752,7 +3752,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${datasource}"
+            "uid": "P1809F7CD0C75ACF3"
           },
           "editorMode": "code",
           "expr": "sum(stork_action_created_total{cluster=~\"$cluster\",exported_namespace=~\"$namespace\",schedule=~\"$migrationschedule\",type=\"failover\"})",
@@ -3767,7 +3767,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${datasource}"
+        "uid": "P1809F7CD0C75ACF3"
       },
       "description": "Count of total Failback operations created in the selected time range",
       "fieldConfig": {
@@ -3822,7 +3822,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${datasource}"
+            "uid": "P1809F7CD0C75ACF3"
           },
           "editorMode": "code",
           "expr": "sum(stork_action_created_total{cluster=~\"$cluster\",exported_namespace=~\"$namespace\",schedule=~\"$migrationschedule\",type=\"failback\"})",
@@ -3837,7 +3837,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${datasource}"
+        "uid": "P1809F7CD0C75ACF3"
       },
       "description": "Status of Failback CRs present in the cluster",
       "fieldConfig": {
@@ -3964,7 +3964,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${datasource}"
+            "uid": "P1809F7CD0C75ACF3"
           },
           "editorMode": "code",
           "expr": "count by (status) (stork_action_status{cluster=~\"$cluster\",exported_namespace=~\"$namespace\",type=\"failover\"})",
@@ -3979,7 +3979,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${datasource}"
+        "uid": "P1809F7CD0C75ACF3"
       },
       "description": "Status of Failback CRs present in the cluster",
       "fieldConfig": {
@@ -4109,7 +4109,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${datasource}"
+            "uid": "P1809F7CD0C75ACF3"
           },
           "editorMode": "code",
           "exemplar": false,
@@ -4127,7 +4127,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${datasource}"
+        "uid": "P1809F7CD0C75ACF3"
       },
       "description": "Table showing information about Failover/Failback action CRs present in the cluster",
       "fieldConfig": {
@@ -4281,7 +4281,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${datasource}"
+            "uid": "P1809F7CD0C75ACF3"
           },
           "editorMode": "code",
           "exemplar": false,
@@ -4296,7 +4296,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${datasource}"
+            "uid": "P1809F7CD0C75ACF3"
           },
           "editorMode": "code",
           "exemplar": false,
@@ -4421,7 +4421,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${datasource}"
+        "uid": "P1809F7CD0C75ACF3"
       },
       "description": "Count of total number of pods rescheduled by Stork Health Monitor when Portworx goes down on any node.",
       "fieldConfig": {
@@ -4505,7 +4505,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${datasource}"
+            "uid": "P1809F7CD0C75ACF3"
           },
           "editorMode": "code",
           "expr": "stork_pods_rescheduled_total",
@@ -4520,7 +4520,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${datasource}"
+        "uid": "P1809F7CD0C75ACF3"
       },
       "description": "Count of pods hyper-converged by stork scheduler i.e scheduled on node where replicas for all pod volumes exists.",
       "fieldConfig": {
@@ -4600,7 +4600,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${datasource}"
+            "uid": "P1809F7CD0C75ACF3"
           },
           "editorMode": "code",
           "expr": "sum(stork_hyperconverged_pods_total)",
@@ -4615,7 +4615,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${datasource}"
+        "uid": "P1809F7CD0C75ACF3"
       },
       "description": "Count of pods which are placed on driver node but not on node where pod volume replicas exists.",
       "fieldConfig": {
@@ -4699,7 +4699,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${datasource}"
+            "uid": "P1809F7CD0C75ACF3"
           },
           "editorMode": "code",
           "expr": "sum(stork_non_hyperconverged_pods_total)",
@@ -4726,7 +4726,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${datasource}"
+        "uid": "P1809F7CD0C75ACF3"
       },
       "description": "Displays the current heap memory allocated and in use by each Stork pod (in MiB). This metric shows the real-time memory consumption of allocated heap objects, including both reachable objects and unreachable objects that the garbage collector has not yet freed.",
       "fieldConfig": {
@@ -4810,7 +4810,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${datasource}"
+            "uid": "P1809F7CD0C75ACF3"
           },
           "editorMode": "code",
           "expr": "go_memstats_heap_alloc_bytes{job=\"stork-service\"} / 1024 / 1024",
@@ -4825,7 +4825,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${datasource}"
+        "uid": "P1809F7CD0C75ACF3"
       },
       "description": "Displays the CPU usage (in cores) for each Stork pod over a time window. Values represent the number of CPU cores consumed (e.g., 0.5 = 50% of one core, 2.0 = two full cores).",
       "fieldConfig": {
@@ -4908,7 +4908,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${datasource}"
+            "uid": "P1809F7CD0C75ACF3"
           },
           "editorMode": "code",
           "expr": "rate(process_cpu_seconds_total{job=\"stork-service\"}[$__range]) \nor \nrate(process_cpu_seconds_total{job=\"stork-service\"}[5m])",
@@ -4923,7 +4923,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${datasource}"
+        "uid": "P1809F7CD0C75ACF3"
       },
       "description": "Displays the rate of heap memory allocation growth per pod over a 10-minute window. Consistently positive values indicate potential memory leaks that could lead to OOM kills, while oscillating values around zero indicate normal GC behavior.",
       "fieldConfig": {
@@ -5007,7 +5007,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${datasource}"
+            "uid": "P1809F7CD0C75ACF3"
           },
           "editorMode": "code",
           "expr": "deriv(go_memstats_heap_alloc_bytes{job=\"stork-service\"}[10m])",
@@ -5022,7 +5022,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${datasource}"
+        "uid": "P1809F7CD0C75ACF3"
       },
       "description": "Displays the uptime (in hours) for each Stork pod since its last start. Low uptime values (<1 hour) or frequent resets indicate pod restarts due to crashes, OOM kills, or liveness probe failures. Consistent uptime across all pods indicates stable operation, while divergent values suggest individual pod issues requiring investigation.",
       "fieldConfig": {
@@ -5106,7 +5106,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${datasource}"
+            "uid": "P1809F7CD0C75ACF3"
           },
           "editorMode": "code",
           "expr": "(time() - process_start_time_seconds{job=\"stork-service\"}) / 3600",
@@ -5121,7 +5121,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${datasource}"
+        "uid": "P1809F7CD0C75ACF3"
       },
       "description": "Displays the number of active goroutines in each Stork pod. Goroutine leaks are a common failure mode in Go controllers that spawn goroutines for watching resources, processing migrations, and handling schedules. Unbounded growth (e.g., >1000) or steadily increasing values indicate leaked watchers or stuck operations that will degrade performance and eventually crash pods.",
       "fieldConfig": {
@@ -5204,7 +5204,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${datasource}"
+            "uid": "P1809F7CD0C75ACF3"
           },
           "editorMode": "code",
           "expr": "go_goroutines{job=\"stork-service\"}",
@@ -5219,7 +5219,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${datasource}"
+        "uid": "P1809F7CD0C75ACF3"
       },
       "description": "Displays the 75th percentile garbage collection pause duration (in milliseconds) for each Stork pod. High GC pause times (>100ms sustained) indicate memory pressure that causes request latency spikes. This is critical for Stork because scheduler extender requests have tight timeout requirements - prolonged GC pauses can cause scheduling failures and degraded performance.",
       "fieldConfig": {
@@ -5303,7 +5303,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${datasource}"
+            "uid": "P1809F7CD0C75ACF3"
           },
           "editorMode": "code",
           "expr": "go_gc_duration_seconds{job=\"stork-service\",quantile=\"0.75\"} * 1000",
@@ -5328,18 +5328,9 @@
     "list": [
       {
         "current": {},
-        "includeAll": false,
-        "name": "datasource",
-        "options": [],
-        "query": "prometheus",
-        "refresh": 1,
-        "type": "datasource"
-      },
-      {
-        "current": {},
         "datasource": {
           "type": "prometheus",
-          "uid": "${datasource}"
+          "uid": "P1809F7CD0C75ACF3"
         },
         "definition": "label_values(stork_all_namespaces,cluster)",
         "name": "cluster",
@@ -5358,7 +5349,7 @@
         "current": {},
         "datasource": {
           "type": "prometheus",
-          "uid": "${datasource}"
+          "uid": "P1809F7CD0C75ACF3"
         },
         "definition": "label_values(stork_migration_status{cluster=~\"$cluster\"},exported_namespace)",
         "includeAll": true,
@@ -5378,7 +5369,7 @@
         "current": {},
         "datasource": {
           "type": "prometheus",
-          "uid": "${datasource}"
+          "uid": "P1809F7CD0C75ACF3"
         },
         "definition": "label_values(stork_migration_schedule_status{cluster=\"$cluster\", exported_namespace=~\"$namespace\"},name)",
         "includeAll": true,
