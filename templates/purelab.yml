@@ -1,0 +1,4 @@
+description: FIXME
+scripts: ["install-px", "install-awscli", "purelab"]
+cloud: aws
+aws_type: t3.2xlarge
