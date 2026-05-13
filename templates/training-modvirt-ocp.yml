@@ -1,0 +1,9 @@
+description: Deploys training clusters
+scripts: ["training-modvirt-ocp-cluster"]
+px_version: 3.6.0.1
+platform: ocp4
+aws_type: "c5n.metal"
+ocp4_version: 4.21.6
+cluster:
+  - id: 1
+    scripts: ["install-awscli", "wetty", "snoop", "training-modvirt-ocp-bastion"]

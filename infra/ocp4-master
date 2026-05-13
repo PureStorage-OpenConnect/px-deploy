@@ -1,5 +1,5 @@
 cat <<EOF >>/etc/bashrc
-PS1='[\u@bastion-'$cluster' \W]\$ '
+PS1='[\u@bastion-'$cluster' \W]\\\$ '
 EOF
 
 dnf install -y docker wget

@@ -1,0 +1,10 @@
+apiVersion: hco.kubevirt.io/v1beta1
+kind: HyperConverged
+metadata:
+  name: kubevirt-hyperconverged
+  namespace: openshift-cnv
+spec:
+  filesystemOverhead:
+    global: "0.08"
+  scratchSpaceStorageClass: scratch-space
+  vmStateStorageClass: vm-state
