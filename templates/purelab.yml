@@ -1,4 +1,4 @@
-description: FIXME
+description: Provision labs for FA and FB
 scripts: ["install-px", "install-awscli", "purelab"]
 cloud: aws
 aws_type: t3.2xlarge
