@@ -315,6 +315,7 @@ data:
         type=menu
         Config {
             system {
+                action=logout
             }
         }
     }
