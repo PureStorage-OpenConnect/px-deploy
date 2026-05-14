@@ -401,5 +401,7 @@ metadata:
 data:
   bashrc: |
     alias ls='ls --color=auto'
+    alias fa="purediag fa"
+    alias fb="purediag fb"
     PS1='[\u@purelab \W]\$ '
   hushlogin: ""
