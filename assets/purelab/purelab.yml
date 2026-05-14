@@ -315,6 +315,7 @@ data:
         type=menu
         Config {
             system {
+                action=logout
             }
         }
     }
@@ -384,8 +385,6 @@ spec:
         - name: purelab
           mountPath: /home/pureuser/.hushlogin
           subPath: hushlogin
-        - name: stuff
-          mountPath: /stuff
       volumes:
       - name: lxde-panel
         configMap:
@@ -393,9 +392,6 @@ spec:
       - name: purelab
         configMap:
           name: purelab
-      - name: stuff
-        hostPath:
-          path: /stuff
 ---
 apiVersion: v1
 kind: ConfigMap
