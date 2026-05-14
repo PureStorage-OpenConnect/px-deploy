@@ -1,7 +1,4 @@
 kubectl apply -f /assets/purelab/purelab.yml
-for i in $(seq 1 $nodes); do
-  scp -r /assets/purelab/stuff node-$cluster-$i:/
-done
 
 kubectl apply -f - <<EOF
 apiVersion: v1
