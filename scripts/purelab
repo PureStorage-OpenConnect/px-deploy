@@ -1,0 +1,153 @@
+kubectl apply -f /assets/purelab/purelab.yml
+for i in $(seq 1 $nodes); do
+  scp -r /assets/purelab/stuff node-$cluster-$i:/
+done
+
+kubectl apply -f - <<EOF
+apiVersion: v1
+kind: Secret
+metadata:
+  name: nginx-tls
+  namespace: purelab
+type: kubernetes.io/tls
+data:
+  tls.crt: $training_cert
+  tls.key: $training_key
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nginx-config
+  namespace: purelab
+data:
+  default.conf: |
+    server {
+      listen 443 ssl;
+
+      ssl_certificate     /etc/nginx/tls/tls.crt;
+      ssl_certificate_key /etc/nginx/tls/tls.key;
+
+      ssl_protocols TLSv1.2 TLSv1.3;
+      ssl_prefer_server_ciphers on;
+
+      location / {
+        proxy_pass http://guacamole:8080;
+        proxy_set_header Host \$host;
+        proxy_set_header X-Forwarded-For \$remote_addr;
+        proxy_set_header X-Forwarded-Proto https;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade \$http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_buffering off;
+        proxy_read_timeout 36000s;
+        proxy_send_timeout 36000s;
+      }
+    }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx
+  namespace: purelab
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: nginx
+  template:
+    metadata:
+      labels:
+        app: nginx
+    spec:
+      containers:
+        - name: nginx
+          image: nginx:1.25
+          ports:
+            - containerPort: 443
+          volumeMounts:
+            - name: tls
+              mountPath: /etc/nginx/tls
+              readOnly: true
+            - name: config
+              mountPath: /etc/nginx/conf.d
+      volumes:
+        - name: tls
+          secret:
+            secretName: nginx-tls
+        - name: config
+          configMap:
+            name: nginx-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: nginx
+  namespace: purelab
+  annotations:
+    service.beta.kubernetes.io/aws-load-balancer-type: nlb
+    service.beta.kubernetes.io/aws-load-balancer-scheme: internet-facing
+    external-dns.alpha.kubernetes.io/hostname: $name.$ocp4_domain
+spec:
+  type: LoadBalancer
+  ports:
+    - port: 443
+      targetPort: 443
+      protocol: TCP
+  selector:
+    app: nginx
+EOF
+
+mkdir /root/support
+cd /root/support
+for i in 10.220.112.140-2026_05_01-12_39_24-2026_04_29-2026_05_01-MUCFA75-ct0-support-logs.zip 10.220.112.140-2026_05_01-12_40_02-2026_04_29-2026_05_01-MUCFA75-ct1-support-logs.zip purediag busymeter.html busymeter_process perf_report purebusymeter; do
+  aws s3 cp s3://peak-purelab/$i .
+done
+
+for i in $(kubectl get pod -n purelab -l app=node-desktop -o jsonpath='{.items[*].metadata.name}'); do
+  kubectl cp -n purelab 10.220.112.140-2026_05_01-12_39_24-2026_04_29-2026_05_01-MUCFA75-ct0-support-logs.zip $i:/home/pureuser
+  kubectl cp -n purelab 10.220.112.140-2026_05_01-12_40_02-2026_04_29-2026_05_01-MUCFA75-ct1-support-logs.zip $i:/home/pureuser
+  kubectl cp -n purelab purediag $i:/usr/bin
+  kubectl exec -n purelab $i -- mkdir -p /support/Toolkit
+  kubectl cp -n purelab busymeter.html $i:/support/Toolkit
+  kubectl cp -n purelab busymeter_process $i:/support/Toolkit
+  kubectl cp -n purelab perf_report $i:/support/Toolkit
+  kubectl cp -n purelab purebusymeter $i:/support/Toolkit
+  kubectl exec -n purelab $i -- chmod 755 /support/Toolkit/{busymeter_process,perf_report,purebusymeter} /usr/bin/purediag
+done
+
+cat <<\EOF >/px-deploy/script-delete/purelab.sh
+#!/usr/bin/bash
+set -e
+
+kubectl delete svc -n purelab nginx
+
+DOMAIN="__DOMAIN__".
+NAME="__NAME__"
+
+ZONE_ID=$(aws route53 list-hosted-zones \
+  | jq -r --arg d "$DOMAIN" '.HostedZones[] | select(.Name==$d) | .Id' \
+  | sed 's#.*/##')
+
+[[ -z "$ZONE_ID" ]] && { echo "Hosted zone not found"; exit 1; }
+
+CHANGES=$(aws route53 list-resource-record-sets --hosted-zone-id "$ZONE_ID" \
+  | jq --arg d "$DOMAIN" --arg n "$NAME" '
+    .ResourceRecordSets
+    | map(select(
+        .Name == ($n + "." + $d)
+        or
+        .Name == ("cname-" + $n + "." + $d)
+      ))
+    | map({Action:"DELETE",ResourceRecordSet:.})
+  ')
+
+COUNT=$(jq length <<<"$CHANGES")
+
+[[ "$COUNT" -eq 0 ]] && exit 0
+
+aws route53 change-resource-record-sets \
+  --hosted-zone-id "$ZONE_ID" \
+  --change-batch "{\"Changes\":$CHANGES}"
+EOF
+sed -i "s/__DOMAIN__/$ocp4_domain/" /px-deploy/script-delete/purelab.sh
+sed -i "s/__NAME__/$name/" /px-deploy/script-delete/purelab.sh

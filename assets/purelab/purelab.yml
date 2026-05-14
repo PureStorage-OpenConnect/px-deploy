@@ -1,0 +1,409 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: purelab
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: guac-node-register
+  namespace: purelab
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: guac-node-reader
+rules:
+- apiGroups: [""]
+  resources: ["nodes"]
+  verbs: ["get", "list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: guac-node-reader
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: guac-node-reader
+subjects:
+- kind: ServiceAccount
+  name: guac-node-register
+  namespace: purelab
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: postgres-data
+  namespace: purelab
+spec:
+  accessModes:
+  - ReadWriteOnce
+  storageClassName: px-csi-db
+  resources:
+    requests:
+      storage: 10Gi
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: guac-db-secret
+  namespace: purelab
+type: Opaque
+stringData:
+  POSTGRES_DB: guacamole_db
+  POSTGRES_USER: guacuser
+  POSTGRES_PASSWORD: guacpass
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: postgres
+  namespace: purelab
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgres
+  template:
+    metadata:
+      labels:
+        app: postgres
+    spec:
+      containers:
+      - name: postgres
+        image: postgres:15
+        envFrom:
+        - secretRef:
+            name: guac-db-secret
+        ports:
+        - containerPort: 5432
+        volumeMounts:
+        - name: pgdata
+          mountPath: /var/lib/postgresql/data
+      volumes:
+      - name: pgdata
+        persistentVolumeClaim:
+          claimName: postgres-data
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres
+  namespace: purelab
+spec:
+  selector:
+    app: postgres
+  ports:
+  - port: 5432
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: guacd
+  namespace: purelab
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: guacd
+  template:
+    metadata:
+      labels:
+        app: guacd
+    spec:
+      containers:
+      - name: guacd
+        image: guacamole/guacd
+        ports:
+        - containerPort: 4822
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: guacd
+  namespace: purelab
+spec:
+  selector:
+    app: guacd
+  ports:
+  - port: 4822
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: guacamole-config
+  namespace: purelab
+data:
+  guacamole.properties: |
+    guacd-hostname: guacd
+    guacd-port: 4822
+
+    postgresql-hostname: postgres
+    postgresql-port: 5432
+    postgresql-database: guacamole_db
+    postgresql-username: guacuser
+    postgresql-password: guacpass
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: guacamole
+  namespace: purelab
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: guacamole
+  template:
+    metadata:
+      labels:
+        app: guacamole
+    spec:
+      containers:
+      - name: guacamole
+        image: guacamole/guacamole
+        ports:
+        - containerPort: 8080
+        volumeMounts:
+        - name: guac-config
+          mountPath: /etc/guacamole
+      volumes:
+      - name: guac-config
+        configMap:
+          name: guacamole-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: guacamole
+  namespace: purelab
+spec:
+  type: LoadBalancer
+  selector:
+    app: guacamole
+  ports:
+  - port: 8080
+    targetPort: 8080
+    nodePort: 30080
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: guac-schema-init
+  namespace: purelab
+spec:
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+      - name: schema
+        image: postgres:15
+        envFrom:
+        - secretRef:
+            name: guac-db-secret
+        command:
+        - /bin/bash
+        - -c
+        - |
+          apt-get update && apt-get install -y curl tar
+
+          curl -L https://downloads.apache.org/guacamole/1.5.5/binary/guacamole-auth-jdbc-1.5.5.tar.gz \
+          | tar xz
+
+          cat guacamole-auth-jdbc-1.5.5/postgresql/schema/*.sql \
+          | PGPASSWORD=$POSTGRES_PASSWORD psql -h postgres -U $POSTGRES_USER -d $POSTGRES_DB
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: guac-node-register
+  namespace: purelab
+spec:
+  template:
+    spec:
+      serviceAccountName: guac-node-register
+      restartPolicy: Never
+      containers:
+      - name: register
+        image: bitnami/kubectl:latest
+        command:
+        - /bin/sh
+        - -c
+        - |
+          set -euxo pipefail
+
+          echo "Step 0: wait for Guacamole to be up"
+
+          # Simple readiness loop
+          for i in $(seq 1 30); do
+            if curl -sSf http://guacamole:8080/guacamole/ >/dev/null 2>&1; then
+              echo "Guacamole is responding"
+              break
+            fi
+            echo "Waiting for Guacamole (attempt $i)..."
+            sleep 5
+          done
+
+          echo "Step 1: getting token"
+
+          TOKEN_JSON=$(curl -sSf -X POST \
+            http://guacamole:8080/guacamole/api/tokens \
+            -H "Content-Type: application/x-www-form-urlencoded" \
+            --data-urlencode "username=guacadmin" \
+            --data-urlencode "password=guacadmin")
+
+          echo "RAW TOKEN RESPONSE: $TOKEN_JSON"
+
+          TOKEN=$(echo "$TOKEN_JSON" | sed -n 's/.*"authToken":"\([^"]*\)".*/\1/p')
+
+          if [ -z "$TOKEN" ]; then
+            echo "Failed to parse authToken from response" >&2
+            exit 1
+          fi
+
+          echo "PARSED TOKEN: $TOKEN"
+
+          echo "Step 2: nodes"
+          kubectl get nodes
+
+          echo "Step 3: loop over node InternalIP addresses"
+
+          n=1
+          for NODE in $(kubectl get nodes -l node-role.kubernetes.io/worker=worker -o jsonpath='{.items[*].status.addresses[?(@.type=="InternalIP")].address}'); do
+            echo "Creating connection for NODE=$NODE"
+
+            curl -sSf -X POST \
+              "http://guacamole:8080/guacamole/api/session/data/postgresql/connections?token=$TOKEN" \
+              -H "Content-Type: application/json" \
+              -d "{
+                \"name\": \"Student-$n\",
+                \"parentIdentifier\": \"ROOT\",
+                \"protocol\": \"vnc\",
+                \"parameters\": {
+                  \"hostname\": \"$NODE\",
+                  \"port\": \"5900\",
+                  \"enable-audio\": \"false\",
+                  \"cursor\": \"remote\",
+                  \"password\": \"changeme\"
+                },
+                \"attributes\": {}
+              }"
+
+            echo "Created connection for $NODE"
+            n=$[$n+1]
+          done
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: lxde-panel
+  namespace: purelab
+data:
+  panel: |
+    Global {
+        edge=bottom
+        allign=center
+        margin=0
+        widthtype=percent
+        width=100
+        height=26
+        transparent=0
+    }
+
+    Plugin {
+        type=menu
+        Config {
+            system {
+            }
+        }
+    }
+
+    Plugin {
+        type=launchbar
+        Config {
+            Button {
+                id=firefox.desktop
+                Exec=firefox
+            }
+            Button {
+                id=lxde-x-terminal-emulator.desktop
+                Exec=lxterminal
+            }
+        }
+    }
+
+    Plugin {
+        type=taskbar
+    }
+
+    Plugin {
+        type=tray
+    }
+
+    Plugin {
+        type=clock
+    }
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: node-desktop
+  namespace: purelab
+spec:
+  selector:
+    matchLabels:
+      app: node-desktop
+  template:
+    metadata:
+      labels:
+        app: node-desktop
+    spec:
+      hostNetwork: true
+      containers:
+      - name: desktop
+        image: dorowu/ubuntu-desktop-lxde-vnc
+        env:
+        - name: USER          # desktop login user inside the container
+          value: pureuser
+        - name: PASSWORD      # Linux password for pureuser
+          value: pureuser
+        - name: VNC_PASSWORD  # VNC password (matches what you used before)
+          value: changeme
+        ports:
+        - containerPort: 5900
+        securityContext:
+          privileged: true
+        volumeMounts:
+        - name: lxde-panel
+          mountPath: /etc/xdg/lxpanel/LXDE/panels/panel
+          subPath: panel
+        - name: purelab
+          mountPath: /home/pureuser/.bashrc
+          subPath: bashrc
+        - name: purelab
+          mountPath: /home/pureuser/.hushlogin
+          subPath: hushlogin
+        - name: stuff
+          mountPath: /stuff
+      volumes:
+      - name: lxde-panel
+        configMap:
+          name: lxde-panel
+      - name: purelab
+        configMap:
+          name: purelab
+      - name: stuff
+        hostPath:
+          path: /stuff
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: purelab
+  namespace: purelab
+data:
+  bashrc: |
+    alias ls='ls --color=auto'
+    PS1='[\u@purelab \W]\$ '
+  hushlogin: ""
