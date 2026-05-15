@@ -282,10 +282,10 @@ spec:
                 \"protocol\": \"vnc\",
                 \"parameters\": {
                   \"hostname\": \"$NODE\",
-                  \"port\": \"5900\",
+                  \"port\": \"5901\",
                   \"enable-audio\": \"false\",
                   \"cursor\": \"remote\",
-                  \"password\": \"changeme\"
+                  \"password\": \"pureuser\"
                 },
                 \"attributes\": {}
               }"
@@ -315,7 +315,6 @@ data:
         type=menu
         Config {
             system {
-                action=logout
             }
         }
     }
@@ -363,32 +362,50 @@ spec:
       hostNetwork: true
       containers:
       - name: desktop
-        image: dorowu/ubuntu-desktop-lxde-vnc
-        env:
-        - name: USER          # desktop login user inside the container
-          value: pureuser
-        - name: PASSWORD      # Linux password for pureuser
-          value: pureuser
-        - name: VNC_PASSWORD  # VNC password (matches what you used before)
-          value: changeme
-        ports:
-        - containerPort: 5900
+        image: accetto/ubuntu-vnc-xfce-g3:22.04
         securityContext:
           privileged: true
+          runAsUser: 0
+        env:
+        - name: STARTUPDIR
+          value: "/dockerstartup"
+        - name: VNC_PW
+          value: "pureuser"
+        - name: VNC_COL_DEPTH
+          value: "24"
+        command: ["/bin/bash", "-c"]
+        args:
+          - |
+            apt update && apt install curl -y
+            curl -o /etc/apt/keyrings/packages.mozilla.org.asc https://packages.mozilla.org/apt/repo-signing-key.gpg
+            echo "deb [signed-by=/etc/apt/keyrings/packages.mozilla.org.asc] https://packages.mozilla.org/apt mozilla main" > /etc/apt/sources.list.d/mozilla.list
+            cat <<EOF > /etc/apt/preferences.d/mozilla
+            Package: *
+            Pin: origin packages.mozilla.org
+            Pin-Priority: 1000
+            EOF
+            apt update && apt install firefox -y
+            su headless -c "tini -s -- /dockerstartup/startup.sh"
+        readinessProbe:
+          exec:
+            command:
+            - test
+            - -f
+            - /usr/bin/firefox
+          initialDelaySeconds: 10
+          periodSeconds: 5
+          failureThreshold: 100
+        ports:
+        - containerPort: 5901
+          name: vnc
         volumeMounts:
-        - name: lxde-panel
-          mountPath: /etc/xdg/lxpanel/LXDE/panels/panel
-          subPath: panel
         - name: purelab
-          mountPath: /home/pureuser/.bashrc
+          mountPath: /home/headless/.bashrc
           subPath: bashrc
         - name: purelab
-          mountPath: /home/pureuser/.hushlogin
+          mountPath: /home/headless/.hushlogin
           subPath: hushlogin
       volumes:
-      - name: lxde-panel
-        configMap:
-          name: lxde-panel
       - name: purelab
         configMap:
           name: purelab
@@ -403,5 +420,5 @@ data:
     alias ls='ls --color=auto'
     alias fa="purediag fa"
     alias fb="purediag fb"
-    PS1='[\u@purelab \W]\$ '
+    PS1='[pureuser@purelab \W]\$ '
   hushlogin: ""
