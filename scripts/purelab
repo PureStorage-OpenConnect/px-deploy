@@ -101,10 +101,13 @@ for i in 10.220.112.140-2026_05_01-12_39_24-2026_04_29-2026_05_01-MUCFA75-ct0-su
 done
 
 for i in $(kubectl get pod -n purelab -l app=node-desktop -o jsonpath='{.items[*].metadata.name}'); do
-  kubectl cp -n purelab 10.220.112.140-2026_05_01-12_39_24-2026_04_29-2026_05_01-MUCFA75-ct0-support-logs.zip $i:/home/pureuser
-  kubectl cp -n purelab 10.220.112.140-2026_05_01-12_40_02-2026_04_29-2026_05_01-MUCFA75-ct1-support-logs.zip $i:/home/pureuser
+  kubectl cp -n purelab 10.220.112.140-2026_05_01-12_39_24-2026_04_29-2026_05_01-MUCFA75-ct0-support-logs.zip $i:/home/headless
+  kubectl cp -n purelab 10.220.112.140-2026_05_01-12_40_02-2026_04_29-2026_05_01-MUCFA75-ct1-support-logs.zip $i:/home/headless
   kubectl cp -n purelab purediag $i:/usr/bin
-  kubectl exec -n purelab $i -- mkdir -p /support/Toolkit
+  kubectl exec -n purelab $i -- mkdir -p /support/Toolkit /support/logs
+  kubectl exec -n purelab $i -- chown headless.headless /support/logs
+  kubectl exec -n purelab $i -- apt update
+  kubectl exec -n purelab $i -- apt install unzip
   kubectl cp -n purelab busymeter.html $i:/support/Toolkit
   kubectl cp -n purelab busymeter_process $i:/support/Toolkit
   kubectl cp -n purelab perf_report $i:/support/Toolkit
