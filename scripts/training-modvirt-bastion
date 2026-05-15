@@ -1,0 +1,35 @@
+# Configure user directories
+mv /assets/training-modvirt-ocp /etc/skel/training
+mkdir /etc/skel/.kube
+cat <<EOF >>/etc/skel/.bashrc
+alias k=kubectl
+complete -F __start_kubectl k
+PS1='\e[0;33m[\u@px-training \W]\$ \e[m'
+EOF
+
+# Create training users and patch yaml
+for i in $(seq 1 $clusters); do
+  useradd training$i
+  passwd --stdin training$i <<<portworx
+  chmod 755 /home/training$i
+  sed -i "s/<nn>/$(printf %.2d $i)/" /home/training$i/training/05-Application_Mobility/backup-location.yaml
+done
+
+# Install storkctl and pxctl
+stork_image=docker.io/$(curl -s https://install.portworx.com/$px_version/version?kbver=$k8s_version | awk '/stork/{print$2}')
+container=$(docker create $stork_image)
+docker cp $container:/storkctl/linux/storkctl /usr/bin
+docker rm $container
+cp /assets/pxctl.sh /usr/bin/pxctl
+chmod 755 /usr/bin/storkctl /usr/bin/pxctl
+storkctl completion bash >/etc/bash_completion.d/storkctl
+
+# Collect kubeconfigs
+for i in $(seq 1 $clusters); do
+  echo trying to copy kubeconfig from cluster $i
+  while ! scp master-$i:.kube/config /home/training$i/.kube/config; do
+    sleep 2
+  done
+  cp /root/.kube/config /home/training$i/training/kubeconfig.target
+  chown training$i.training$i /home/training$i/.kube/config /home/training$i/training/kubeconfig.target
+done

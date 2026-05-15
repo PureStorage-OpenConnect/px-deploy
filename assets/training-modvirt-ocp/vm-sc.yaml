@@ -1,0 +1,10 @@
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: px-rwx-block-kubevirt
+  annotations:
+    storageclass.kubevirt.io/is-default-virt-class: "true"
+parameters:
+  repl: "2"
+provisioner: pxd.portworx.com
+allowVolumeExpansion: true
