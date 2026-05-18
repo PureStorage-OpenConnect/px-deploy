@@ -1,4 +1,10 @@
+helm repo add aws-ebs-csi-driver https://kubernetes-sigs.github.io/aws-ebs-csi-driver
+helm repo update
+helm upgrade --install aws-ebs-csi-driver --namespace kube-system aws-ebs-csi-driver/aws-ebs-csi-driver
+
 kubectl apply -f /assets/purelab/purelab.yml
+kubectl scale sts node-desktop -n purelab --replicas $nodes
+kubectl wait --for=condition=ready pod -l app=node-desktop --timeout=600s -n purelab
 
 kubectl apply -f - <<EOF
 apiVersion: v1
@@ -100,20 +106,21 @@ for i in 10.220.112.140-2026_05_01-12_39_24-2026_04_29-2026_05_01-MUCFA75-ct0-su
   aws s3 cp s3://peak-purelab/$i .
 done
 
-for i in $(kubectl get pod -n purelab -l app=node-desktop -o jsonpath='{.items[*].metadata.name}'); do
-  kubectl cp -n purelab 10.220.112.140-2026_05_01-12_39_24-2026_04_29-2026_05_01-MUCFA75-ct0-support-logs.zip $i:/home/headless
-  kubectl cp -n purelab 10.220.112.140-2026_05_01-12_40_02-2026_04_29-2026_05_01-MUCFA75-ct1-support-logs.zip $i:/home/headless
-  kubectl cp -n purelab purediag $i:/usr/bin
+for i in $(kubectl get pod -n purelab -l app=node-desktop -o jsonpath='{.items[*].metadata.name}'); do (
+  echo copying files to pod $i
   kubectl exec -n purelab $i -- mkdir -p /support/Toolkit /support/logs
-  kubectl exec -n purelab $i -- chown headless.headless /support/logs
-  kubectl exec -n purelab $i -- apt update
-  kubectl exec -n purelab $i -- apt install unzip
+  kubectl cp -n purelab 10.220.112.140-2026_05_01-12_39_24-2026_04_29-2026_05_01-MUCFA75-ct0-support-logs.zip $i:/support
+  kubectl cp -n purelab 10.220.112.140-2026_05_01-12_40_02-2026_04_29-2026_05_01-MUCFA75-ct1-support-logs.zip $i:/support
+  kubectl cp -n purelab purediag $i:/usr/bin
   kubectl cp -n purelab busymeter.html $i:/support/Toolkit
   kubectl cp -n purelab busymeter_process $i:/support/Toolkit
   kubectl cp -n purelab perf_report $i:/support/Toolkit
   kubectl cp -n purelab purebusymeter $i:/support/Toolkit
+  kubectl exec -n purelab $i -- chown -R headless.headless /support
   kubectl exec -n purelab $i -- chmod 755 /support/Toolkit/{busymeter_process,perf_report,purebusymeter} /usr/bin/purediag
-done
+) & done
+wait
+echo finished copying files
 
 cat <<\EOF >/px-deploy/script-delete/purelab.sh
 #!/usr/bin/bash
