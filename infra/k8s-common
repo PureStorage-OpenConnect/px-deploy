@@ -10,7 +10,7 @@ gpgkey=https://pkgs.k8s.io/core:/stable:/v$repo/rpm/repodata/repomd.xml.key
 EOF
 
 # Install prerequisites
-while ! dnf install -y passt-selinux selinux-policy policycoreutils-python-utils selinux-policy-targeted container-selinux --setopt=tsflags=noscripts; do sleep 1; done
+while ! dnf install -y passt-selinux policycoreutils-python-utils container-selinux --setopt=tsflags=noscripts; do sleep 1; done
 while ! dnf install -y kubelet-$k8s_version docker containerd kubeadm-$k8s_version kubectl-$k8s_version; do sleep 1; done
 
 # setup containerd
