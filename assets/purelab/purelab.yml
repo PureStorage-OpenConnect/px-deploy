@@ -455,4 +455,5 @@ data:
     alias fa="purediag fa"
     alias fb="purediag fb"
     PS1='[pureuser@purelab \W]\$ '
+    export PATH=$PATH:/support
   hushlogin: ""

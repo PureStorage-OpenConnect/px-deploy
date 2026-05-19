@@ -114,7 +114,7 @@ for i in $(kubectl get pod -n purelab -l app=node-desktop -o jsonpath='{.items[*
     kubectl cp -n purelab $j $i:/support
   done
   kubectl exec -n purelab $i -- chown -R headless.headless /support
-  kubectl exec -n purelab $i -- chmod 755 /support/Toolkit/{busymeter_process,perf_report,purebusymeter} /usr/bin/purediag
+  kubectl exec -n purelab $i -- chmod 755 /support/Toolkit/{busymeter_process,perf_report,purebusymeter,purediag}
 ) & done
 wait
 echo finished copying files
