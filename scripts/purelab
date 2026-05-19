@@ -102,20 +102,17 @@ EOF
 
 mkdir /root/support
 cd /root/support
-for i in 10.220.112.140-2026_05_01-12_39_24-2026_04_29-2026_05_01-MUCFA75-ct0-support-logs.zip 10.220.112.140-2026_05_01-12_40_02-2026_04_29-2026_05_01-MUCFA75-ct1-support-logs.zip purediag busymeter.html busymeter_process perf_report purebusymeter; do
+files="PEAK-M20-ct0-logs.zip PEAK-M20-ct1-logs.zip mucfbs-logs.zip purediag busymeter.html busymeter_process perf_report purebusymeter"
+for i in $files; do
   aws s3 cp s3://peak-purelab/$i .
 done
 
 for i in $(kubectl get pod -n purelab -l app=node-desktop -o jsonpath='{.items[*].metadata.name}'); do (
   echo copying files to pod $i
   kubectl exec -n purelab $i -- mkdir -p /support/Toolkit /support/logs
-  kubectl cp -n purelab 10.220.112.140-2026_05_01-12_39_24-2026_04_29-2026_05_01-MUCFA75-ct0-support-logs.zip $i:/support
-  kubectl cp -n purelab 10.220.112.140-2026_05_01-12_40_02-2026_04_29-2026_05_01-MUCFA75-ct1-support-logs.zip $i:/support
-  kubectl cp -n purelab purediag $i:/usr/bin
-  kubectl cp -n purelab busymeter.html $i:/support/Toolkit
-  kubectl cp -n purelab busymeter_process $i:/support/Toolkit
-  kubectl cp -n purelab perf_report $i:/support/Toolkit
-  kubectl cp -n purelab purebusymeter $i:/support/Toolkit
+  for j in $files; do
+    kubectl cp -n purelab $j $i:/support
+  done
   kubectl exec -n purelab $i -- chown -R headless.headless /support
   kubectl exec -n purelab $i -- chmod 755 /support/Toolkit/{busymeter_process,perf_report,purebusymeter} /usr/bin/purediag
 ) & done
