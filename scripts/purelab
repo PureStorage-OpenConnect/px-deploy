@@ -1,10 +1,10 @@
 helm repo add aws-ebs-csi-driver https://kubernetes-sigs.github.io/aws-ebs-csi-driver
 helm repo update
-helm upgrade --install aws-ebs-csi-driver --namespace kube-system aws-ebs-csi-driver/aws-ebs-csi-driver
+helm install aws-ebs-csi-driver --namespace kube-system aws-ebs-csi-driver/aws-ebs-csi-driver --set controller.replicaCount=1
 
-kubectl wait --for=condition=ready pod -l app=node-desktop --timeout=600s -n purelab
 kubectl apply -f /assets/purelab/purelab.yml
 kubectl scale sts node-desktop -n purelab --replicas $nodes
+kubectl wait --for=condition=ready pod -l app=node-desktop --timeout=600s -n purelab
 
 kubectl apply -f - <<EOF
 apiVersion: v1
