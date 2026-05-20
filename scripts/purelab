@@ -102,19 +102,23 @@ EOF
 
 mkdir /root/support
 cd /root/support
-files="PEAK-M20-ct0-logs.zip PEAK-M20-ct1-logs.zip mucfbs-logs.zip purediag busymeter.html busymeter_process perf_report purebusymeter"
-for i in $files; do
+logs="PEAK-M20-ct0-logs.zip PEAK-M20-ct1-logs.zip mucfbs-logs.zip"
+files="purediag busymeter.html busymeter_process perf_report purebusymeter"
+for i in $logs $files; do
   aws s3 cp s3://peak-purelab/$i .
 done
 
 for i in $(kubectl get pod -n purelab -l app=node-desktop -o jsonpath='{.items[*].metadata.name}'); do (
   echo copying files to pod $i
   kubectl exec -n purelab $i -- mkdir -p /support/Toolkit /support/logs
-  for j in $files; do
+  for j in $logs; do
     kubectl cp -n purelab $j $i:/support
   done
+  for j in $files; do
+    kubectl cp -n purelab $j $i:/support/Toolkit
+  done
   kubectl exec -n purelab $i -- chown -R headless.headless /support
-  kubectl exec -n purelab $i -- chmod 755 /support/Toolkit/{busymeter_process,perf_report,purebusymeter,purediag}
+  eval kubectl exec -n purelab $i -- chmod 755 /support/Toolkit/{$(echo $files | sed 's/ /,/g')}
 ) & done
 wait
 echo finished copying files
