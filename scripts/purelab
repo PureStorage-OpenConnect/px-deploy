@@ -2,6 +2,10 @@ helm repo add aws-ebs-csi-driver https://kubernetes-sigs.github.io/aws-ebs-csi-d
 helm repo update
 helm install aws-ebs-csi-driver --namespace kube-system aws-ebs-csi-driver/aws-ebs-csi-driver --set controller.replicaCount=1
 
+until [ $(kubectl get nodes -l node-role.kubernetes.io/worker=worker --no-headers | grep -c Ready) -eq $nodes ]; do
+  echo waiting for nodes to be up
+  sleep 5
+done
 kubectl rollout status deployment/aws-load-balancer-controller -n kube-system --timeout=300s
 kubectl apply -f /assets/purelab/purelab.yml
 kubectl scale sts node-desktop -n purelab --replicas $nodes
