@@ -1,6 +1,7 @@
 mkdir /etc/wetty
 rm -f /etc/securetty
 sed -i '/master-1/s/$/ px-training/' /etc/hosts
+kubectl rollout status deployment/aws-load-balancer-controller -n kube-system --timeout=300s
 
 kubectl apply -f - <<EOF
 apiVersion: v1
