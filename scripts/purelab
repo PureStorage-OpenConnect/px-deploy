@@ -2,9 +2,9 @@ helm repo add aws-ebs-csi-driver https://kubernetes-sigs.github.io/aws-ebs-csi-d
 helm repo update
 helm install aws-ebs-csi-driver --namespace kube-system aws-ebs-csi-driver/aws-ebs-csi-driver --set controller.replicaCount=1
 
+kubectl rollout status deployment/aws-load-balancer-controller -n kube-system --timeout=300s
 kubectl apply -f /assets/purelab/purelab.yml
 kubectl scale sts node-desktop -n purelab --replicas $nodes
-kubectl rollout status sts/node-desktop -n purelab --timeout=300s
 
 kubectl apply -f - <<EOF
 apiVersion: v1
@@ -108,6 +108,7 @@ for i in $logs $files; do
   aws s3 cp s3://peak-purelab/$i .
 done
 
+kubectl rollout status sts/node-desktop -n purelab --timeout=300s
 for i in $(kubectl get pod -n purelab -l app=node-desktop -o jsonpath='{.items[*].metadata.name}'); do (
   echo copying files to pod $i
   kubectl exec -n purelab $i -- mkdir -p /support/Toolkit /support/logs
@@ -122,6 +123,7 @@ for i in $(kubectl get pod -n purelab -l app=node-desktop -o jsonpath='{.items[*
 ) & done
 wait
 echo finished copying files
+kubectl delete pod -n purelab --field-selector=status.phase=Failed
 
 cat <<\EOF >/px-deploy/script-delete/purelab.sh
 #!/usr/bin/bash
