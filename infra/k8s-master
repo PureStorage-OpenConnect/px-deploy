@@ -29,7 +29,7 @@ if [ $cloud = aws ] && [ $platform != eks ] && [ $platform != ocp4 ]; then
     echo "Applying aws-eks-load-balancer-controller"
     helm repo add eks https://aws.github.io/eks-charts
     helm install aws-load-balancer-controller eks/aws-load-balancer-controller -n kube-system --version 3.2.1 --set clusterName=$name-$cluster --set feature-gates=ServiceTypeLoadBalancerOnly=true --set defaultLoadBalancerScheme=internet-facing --set defaultTags.pxd_uuid=$pxd_uuid --set replicaCount=1
-    kubectl wait --for=condition=ready pod -n kube-system -l app.kubernetes.io/name=aws-load-balancer-controller --timeout 30s
+    kubectl get mutatingwebhookconfiguration aws-load-balancer-webhook -o json | jq '.webhooks[].failurePolicy = "Ignore"' | kubectl apply -f - # Prevent service from blocking Service creation later
     kubectl apply -f - <<EOF
 apiVersion: v1
 kind: ServiceAccount

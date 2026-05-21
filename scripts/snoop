@@ -5,4 +5,5 @@ EOF
 systemctl restart sshd
 
 install -d -m 777 /var/log/sessions
+kubectl rollout status deployment/aws-load-balancer-controller -n kube-system --timeout=300s
 kubectl apply -f /assets/snoop.yaml
