@@ -1,5 +1,4 @@
 description: Deploys training clusters
-scripts: ["training-cluster"]
 px_version: 3.5.1
 k8s_version: 1.33.5
 scripts: ["install-px", "training-backup-cluster"]
