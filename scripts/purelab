@@ -4,7 +4,7 @@ helm install aws-ebs-csi-driver --namespace kube-system aws-ebs-csi-driver/aws-e
 
 kubectl apply -f /assets/purelab/purelab.yml
 kubectl scale sts node-desktop -n purelab --replicas $nodes
-kubectl wait --for=jsonpath='{.status.currentReplicas}'=$nodes sts/node-desktop -n purelab
+kubectl rollout status sts/node-desktop -n purelab --timeout=300s
 
 kubectl apply -f - <<EOF
 apiVersion: v1
