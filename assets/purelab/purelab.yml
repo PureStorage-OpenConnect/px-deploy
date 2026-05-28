@@ -6,7 +6,9 @@ provisioner: ebs.csi.aws.com
 volumeBindingMode: WaitForFirstConsumer
 parameters:
   csi.storage.k8s.io/fstype: ext4
-  type: gp2
+  type: gp3
+  iops: "6000"
+  throughput: "250"
 ---
 apiVersion: v1
 kind: Namespace
@@ -222,8 +224,19 @@ spec:
           curl -L https://downloads.apache.org/guacamole/1.5.5/binary/guacamole-auth-jdbc-1.5.5.tar.gz \
           | tar xz
 
+          until PGPASSWORD=$POSTGRES_PASSWORD psql -h postgres -U $POSTGRES_USER -l; do
+            echo waiting for postgres
+            sleep 1
+          done
           cat guacamole-auth-jdbc-1.5.5/postgresql/schema/*.sql \
           | PGPASSWORD=$POSTGRES_PASSWORD psql -h postgres -U $POSTGRES_USER -d $POSTGRES_DB
+          PGPASSWORD=$POSTGRES_PASSWORD psql -h postgres -U $POSTGRES_USER -d $POSTGRES_DB -c "
+            INSERT INTO guacamole_connection_attribute (connection_id, attribute_name, attribute_value)
+            SELECT connection_id, 'max-connections', '1' FROM guacamole_connection ON CONFLICT DO NOTHING;
+
+            INSERT INTO guacamole_connection_attribute (connection_id, attribute_name, attribute_value)
+            SELECT connection_id, 'max-connections-per-user', '1' FROM guacamole_connection ON CONFLICT DO NOTHING;
+          " || echo "Attributes already patched or skip setup tracking."
 ---
 apiVersion: batch/v1
 kind: Job
@@ -283,24 +296,29 @@ spec:
           n=1
           for NODE in $(kubectl get nodes -l node-role.kubernetes.io/worker=worker -o jsonpath='{.items[*].status.addresses[?(@.type=="InternalIP")].address}'); do
             echo "Creating connection for NODE=$NODE"
-
+            PAYLOAD=$(cat <<EOF
+          {
+            "name": "Student-$n",
+            "parentIdentifier": "ROOT",
+            "protocol": "vnc",
+            "parameters": {
+              "hostname": "$NODE",
+              "port": "5901",
+              "enable-audio": "false",
+              "cursor": "local",
+              "password": "pureuser"
+            },
+            "attributes": {
+              "max-connections": "1",
+              "max-connections-per-user": "1"
+            }
+          }
+          EOF
+          )
             curl -sSf -X POST \
               "http://guacamole:8080/guacamole/api/session/data/postgresql/connections?token=$TOKEN" \
               -H "Content-Type: application/json" \
-              -d "{
-                \"name\": \"Student-$n\",
-                \"parentIdentifier\": \"ROOT\",
-                \"protocol\": \"vnc\",
-                \"parameters\": {
-                  \"hostname\": \"$NODE\",
-                  \"port\": \"5901\",
-                  \"enable-audio\": \"false\",
-                  \"cursor\": \"remote\",
-                  \"password\": \"pureuser\"
-                },
-                \"attributes\": {}
-              }"
-
+              -d "$PAYLOAD"
             echo "Created connection for $NODE"
             n=$[$n+1]
           done
@@ -408,6 +426,16 @@ spec:
             Pin-Priority: 1000
             EOF
             apt update && apt install firefox -y
+            mkdir -p /home/headless/.config/xfce4/xfconf/xfce-perchannel-xml/
+            cat <<'EOF' > /home/headless/.config/xfce4/xfconf/xfce-perchannel-xml/xsettings.xml
+            <?xml version="1.0" encoding="UTF-8"?>
+            <channel name="xsettings" version="1.0">
+              <property name="Xft" type="empty">
+                <property name="DPI" type="int" value="135"/>
+              </property>
+            </channel>
+            EOF
+            chown -R headless:headless /home/headless/.config
             su headless -c "tini -s -- /dockerstartup/startup.sh"
         readinessProbe:
           exec:
