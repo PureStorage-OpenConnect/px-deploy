@@ -11,7 +11,7 @@ EOF
 
 # Install prerequisites
 while ! dnf install -y passt-selinux policycoreutils-python-utils container-selinux --setopt=tsflags=noscripts; do sleep 1; done
-while ! dnf install -y kubelet-$k8s_version docker containerd kubeadm-$k8s_version kubectl-$k8s_version; do sleep 1; done
+while ! dnf install -y kubelet-$k8s_version docker runc containerd kubeadm-$k8s_version kubectl-$k8s_version; do sleep 1; done
 
 # setup containerd
 containerd config default | sed 's/SystemdCgroup = false/SystemdCgroup = true/' | sed 's/device_ownership_from_security_context = false/device_ownership_from_security_context = true/' >/etc/containerd/config.toml
