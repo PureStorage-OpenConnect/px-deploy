@@ -1,3 +1,7 @@
+# 6.7.1
+##Fixes
+* add runc package for k8s setup
+
 # 6.7
 ##Fixes
 * fix & update grafana setup on k8s and ocp4
