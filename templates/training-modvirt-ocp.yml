@@ -1,5 +1,5 @@
 description: Deploys training clusters
-scripts: ["training-modvirt-ocp-cluster"]
+scripts: ["training-modvirt-ocp-cluster","install-virtctl"]
 px_version: 3.6.0.1
 platform: ocp4
 aws_type: "c5n.metal"
