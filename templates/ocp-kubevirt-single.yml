@@ -1,5 +1,5 @@
 description: Cluster OCP Virtualization Demo on a aws bare-metal
-scripts: ["install-awscli","install-px", "licenses", "ocp-kubevirt","kubevirt-apps"]
+scripts: ["install-awscli","install-px", "licenses","install-virtctl","ocp-kubevirt","kubevirt-apps"]
 aws_type: "c5n.metal"
 platform: "ocp4"
 cloud: "aws"
