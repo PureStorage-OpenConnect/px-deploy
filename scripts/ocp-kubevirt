@@ -33,9 +33,6 @@ spec:
   channel: "stable"
 EOF
 
-curl -Lo /usr/bin/virtctl https://github.com/kubevirt/kubevirt/releases/download/v1.5.3/virtctl-v1.5.3-linux-amd64
-chmod 755 /usr/bin/virtctl
-
 echo "waiting for kubevirt-hyperconverged operator readiness"
 while ! kubectl wait clusterserviceversions.operators.coreos.com $OPVERSION -n openshift-cnv --timeout=300s --for=jsonpath='{.status.phase}'='Succeeded'; do
   sleep 2

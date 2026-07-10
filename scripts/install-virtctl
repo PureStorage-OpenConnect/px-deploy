@@ -1,0 +1,5 @@
+KUBEVIRTVERSION=1.5.3
+echo "installing virtctl version $KUBEVIRTVERSION"
+curl -L -o /usr/local/bin/virtctl https://github.com/kubevirt/kubevirt/releases/download/v${KUBEVIRTVERSION}/virtctl-v${KUBEVIRTVERSION}-linux-amd64
+chmod +x /usr/local/bin/virtctl
+ln -s /usr/local/bin/virtctl /usr/local/bin/kubectl-virt

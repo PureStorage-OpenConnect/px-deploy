@@ -28,14 +28,6 @@ if  [ $? = 1 ]; then
   kubectl -n kubevirt patch kubevirts kubevirt --type=merge --patch '{"spec":{"configuration":{"developerConfiguration":{"useEmulation":true}}}}'
 fi
 
-echo "installing virtctl"
-ARCH=$(uname -s | tr A-Z a-z)-$(uname -m | sed 's/x86_64/amd64/') || windows-amd64.exe
-echo ${ARCH}
-curl -L -o /tmp/virtctl https://github.com/kubevirt/kubevirt/releases/download/${KUBEVIRTVERSION}/virtctl-${KUBEVIRTVERSION}-${ARCH}
-chmod +x /tmp/virtctl
-sudo install /tmp/virtctl /usr/local/bin
-ln -s /usr/local/bin/virtctl /usr/local/bin/kubectl-virt 
-
 kubectl apply -f https://github.com/kubevirt/containerized-data-importer/releases/download/${CDIVERSION}/cdi-operator.yaml
 kubectl apply -f https://github.com/kubevirt/containerized-data-importer/releases/download/${CDIVERSION}/cdi-cr.yaml
 
