@@ -1,0 +1,14 @@
+description: Two Cluster OCP with IXP, ACM & AsyncDR 
+scripts: ["install-awscli","install-px", "licenses"]
+aws_type: "m6i.xlarge"
+platform: "ocp4"
+cloud: "aws"
+clusters: 2
+nodes: 4
+cluster:
+  - id: 1
+    scripts: ["ocp-acm"]
+  - id: 2
+    scripts: []
+env:
+  cloud_drive: "type%3Dgp2%2Csize%3D150"

@@ -1,0 +1,75 @@
+# deploy ansible automation platform
+# needed for cluster import
+kubectl apply -f /assets/ocp-acm/aap-operator.yaml
+
+kubectl apply -f /assets/ocp-acm/acm-operator.yaml
+
+#wait for operator
+while ! kubectl wait --for=condition=ready pod -lname=multiclusterhub-operator -n open-cluster-management; do
+    echo "waiting for MCH Operator"
+    sleep 2
+done
+
+#wait for CRD 
+while ! kubectl wait --for condition=established crd/multiclusterhubs.operator.open-cluster-management.io; do
+  echo "waiting for MCH CRD"
+  sleep 2
+done
+
+oc apply -f - <<EOF
+apiVersion: operator.open-cluster-management.io/v1
+kind: MultiClusterHub
+metadata:
+  name: multiclusterhub
+  namespace: open-cluster-management
+spec:
+  localClusterName: cluster-$cluster
+EOF
+
+while ! kubectl wait --for=jsonpath='{.status.phase}'=Running multiclusterhub/multiclusterhub -n open-cluster-management; do
+  echo "waiting for MCH resource"
+  sleep 2
+done 
+
+echo "importing managed clusters"
+#loop through clusters and onboard
+for i in $(seq 2 $clusters); do
+  kubectl create ns cluster-$i
+  kubectl create secret generic auto-import-secret -n cluster-$i --from-literal=kubeconfig=$(ssh master-$i cat /root/.kube/config | base64 -w0)
+oc apply -f - <<EOF
+apiVersion: cluster.open-cluster-management.io/v1
+kind: ManagedCluster
+metadata:
+  name: cluster-$i
+  labels:
+    name: cluster-$i
+    cloud: auto-detect
+    vendor: auto-detect
+    cluster.open-cluster-management.io/clusterset: default
+  annotations: {}
+spec:
+  hubAcceptsClient: true
+---
+apiVersion: agent.open-cluster-management.io/v1
+kind: KlusterletAddonConfig
+metadata:
+  name: cluster-$i
+  namespace: cluster-$i
+spec:
+  clusterName: cluster-$i
+  clusterNamespace: cluster-$i
+  clusterLabels:
+    name: cluster-$i
+    cloud: auto-detect
+    vendor: auto-detect
+    cluster.open-cluster-management.io/clusterset: default
+  applicationManager:
+    enabled: true
+  policyController:
+    enabled: true
+  searchCollector:
+    enabled: true
+  certPolicyController:
+    enabled: true
+EOF
+done
