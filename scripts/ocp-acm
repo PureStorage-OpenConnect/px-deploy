@@ -4,14 +4,14 @@ kubectl apply -f /assets/ocp-acm/aap-operator.yaml
 
 kubectl apply -f /assets/ocp-acm/acm-operator.yaml
 
-#wait for operator
-while ! kubectl wait --for=condition=ready pod -lname=multiclusterhub-operator -n open-cluster-management; do
+echo "waiting for MCH Operator"
+while ! kubectl wait --for=condition=ready pod -lname=multiclusterhub-operator -n open-cluster-management --timeout 5m; do
     echo "waiting for MCH Operator"
     sleep 2
 done
 
-#wait for CRD 
-while ! kubectl wait --for condition=established crd/multiclusterhubs.operator.open-cluster-management.io; do
+echo "waiting for MCH CRD" 
+while ! kubectl wait --for condition=established crd/multiclusterhubs.operator.open-cluster-management.io --timeout 5m; do
   echo "waiting for MCH CRD"
   sleep 2
 done
@@ -34,9 +34,22 @@ done
 echo "importing managed clusters"
 #loop through clusters and onboard
 for i in $(seq 2 $clusters); do
-  kubectl create ns cluster-$i
-  kubectl create secret generic auto-import-secret -n cluster-$i --from-literal=kubeconfig=$(ssh master-$i cat /root/.kube/config | base64 -w0)
-oc apply -f - <<EOF
+  echo "onboarding cluster $i"
+  oc apply -f - <<EOF
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: cluster-$i
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: auto-import-secret
+  namespace: cluster-$i
+type: Opaque
+data:
+  kubeconfig: $(ssh master-$i 'cat /root/.kube/config | base64 -w0') 
+---
 apiVersion: cluster.open-cluster-management.io/v1
 kind: ManagedCluster
 metadata:
