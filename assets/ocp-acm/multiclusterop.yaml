@@ -1,0 +1,30 @@
+apiVersion: operators.coreos.com/v1alpha1
+kind: CatalogSource
+metadata:
+  name: portworx-multi-cluster-certified-catalog
+  namespace: openshift-marketplace
+spec:
+  displayName: Portworx Multi-Cluster Operator (Dev)
+  grpcPodConfig:
+    securityContextConfig: restricted
+  image: 'docker.io/portworx/px-multi-cluster-operator-catalog:26.1.0-ea'
+  publisher: Everpure (Dev)
+  sourceType: grpc
+  updateStrategy:
+    registryPoll:
+      interval: 1m
+---
+apiVersion: operators.coreos.com/v1alpha1
+kind: Subscription
+metadata:
+  labels:
+    operators.coreos.com/portworx-multi-cluster-certified.portworx: ""
+  name: portworx-multi-cluster-certified
+  namespace: portworx
+spec:
+  channel: stable
+  installPlanApproval: Automatic
+  name: portworx-multi-cluster-certified
+  source: portworx-multi-cluster-certified-catalog
+  sourceNamespace: openshift-marketplace
+  startingCSV: portworx-multi-cluster-certified.v26.1.0-ea

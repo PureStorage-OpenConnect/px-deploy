@@ -86,3 +86,5 @@ spec:
     enabled: true
 EOF
 done
+
+kubectl apply -f /assets/ocp-acm/multiclusterop.yaml
