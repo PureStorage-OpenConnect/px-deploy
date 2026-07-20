@@ -1,0 +1,8 @@
+kubectl patch storagecluster $(kubectl get stc -n portworx -o jsonpath='{.items[].metadata.name}') -n portworx --type='merge' -p '{
+  "spec": {
+    "ocpDynamicPlugin": {
+      "cacheAgentImage": "docker.io/portworx/px-cache-agent:1.1.0-ea",
+      "pluginImage": "docker.io/portworx/portworx-dynamic-plugin:2.3.0-ea"
+    }
+  }
+}'

@@ -1,0 +1,94 @@
+# deploy ansible automation platform
+# needed for cluster import
+kubectl apply -f /assets/ocp-acm/aap-operator.yaml
+
+kubectl apply -f /assets/ocp-acm/acm-operator.yaml
+
+echo "waiting for MCH Operator"
+while ! kubectl wait --for=condition=ready pod -lname=multiclusterhub-operator -n open-cluster-management --timeout 5m; do
+    echo "waiting for MCH Operator"
+    sleep 2
+done
+
+echo "waiting for MCH CRD" 
+while ! kubectl wait --for condition=established crd/multiclusterhubs.operator.open-cluster-management.io --timeout 5m; do
+  echo "waiting for MCH CRD"
+  sleep 2
+done
+
+oc apply -f - <<EOF
+apiVersion: operator.open-cluster-management.io/v1
+kind: MultiClusterHub
+metadata:
+  name: multiclusterhub
+  namespace: open-cluster-management
+spec:
+  localClusterName: cluster-$cluster
+EOF
+
+while ! kubectl wait --for=jsonpath='{.status.phase}'=Running multiclusterhub/multiclusterhub -n open-cluster-management; do
+  echo "waiting for MCH resource"
+  sleep 2
+done 
+
+echo "importing managed clusters"
+#loop through clusters and onboard
+for i in $(seq 2 $clusters); do
+  echo "onboarding cluster $i"
+  oc apply -f - <<EOF
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: cluster-$i
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: auto-import-secret
+  namespace: cluster-$i
+type: Opaque
+data:
+  kubeconfig: $(ssh master-$i 'cat /root/.kube/config | base64 -w0') 
+---
+apiVersion: cluster.open-cluster-management.io/v1
+kind: ManagedCluster
+metadata:
+  name: cluster-$i
+  labels:
+    name: cluster-$i
+    cloud: auto-detect
+    vendor: auto-detect
+    cluster.open-cluster-management.io/clusterset: default
+  annotations: {}
+spec:
+  hubAcceptsClient: true
+---
+apiVersion: agent.open-cluster-management.io/v1
+kind: KlusterletAddonConfig
+metadata:
+  name: cluster-$i
+  namespace: cluster-$i
+spec:
+  clusterName: cluster-$i
+  clusterNamespace: cluster-$i
+  clusterLabels:
+    name: cluster-$i
+    cloud: auto-detect
+    vendor: auto-detect
+    cluster.open-cluster-management.io/clusterset: default
+  applicationManager:
+    enabled: true
+  policyController:
+    enabled: true
+  searchCollector:
+    enabled: true
+  certPolicyController:
+    enabled: true
+EOF
+done
+
+# apply px-multi-cluster-operator
+kubectl apply -f /assets/ocp-acm/multiclusterop.yaml
+
+# enable console plugin
+kubectl patch console.operator cluster --type json -p '[{"op": "add", "path": "/spec/plugins/-", "value": "px-multi-cluster-plugin"}]'
