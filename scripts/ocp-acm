@@ -87,4 +87,8 @@ spec:
 EOF
 done
 
+# apply px-multi-cluster-operator
 kubectl apply -f /assets/ocp-acm/multiclusterop.yaml
+
+# enable console plugin
+kubectl patch console.operator cluster --type json -p '[{"op": "add", "path": "/spec/plugins/-", "value": "px-multi-cluster-plugin"}]'
