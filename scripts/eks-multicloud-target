@@ -1,6 +1,15 @@
+# generate serviceaccount for migration
+mkdir -p /root/drscripts
 
+kubectl apply -f /assets/eks-multicloud-target/serviceaccount.yaml
+clusterapi=$(aws eks describe-cluster --name px-deploy-$name-$cluster | jq -r '.cluster.endpoint')
+bash /assets/eks-multicloud-target/kubeconfig.sh $clusterapi > /root/drscripts/migration_dest_kubeconfig
+
+migration_dest_kubeconfig=$(cat /root/drscripts/migration_dest_kubeconfig | base64 -w0)
+
+storagecluster=$(kubectl get stc -n portworx -o jsonpath='{.items[].metadata.name}')
 kubectl create secret  generic --from-file=/root/.aws/credentials -n portworx aws-creds
-kubectl patch stc/px-deploy-$cluster  --type merge  -n portworx -p '{"spec": {
+kubectl patch stc/$storagecluster  --type merge  -n portworx -p '{"spec": {
   "stork": {
       "volumes": [
        {
@@ -15,60 +24,43 @@ kubectl patch stc/px-deploy-$cluster  --type merge  -n portworx -p '{"spec": {
      }
 }}'
 
-kubectl annotate stc px-deploy-$cluster -n portworx portworx.io/service-type="LoadBalancer" --overwrite
+kubectl annotate stc $storagecluster -n portworx portworx.io/service-type="LoadBalancer" --overwrite
 
-while : ; do
-  token=$(kubectl exec -n portworx -it $(kubectl get pods -n portworx -lname=portworx --field-selector=status.phase=Running | tail -1 | cut -f 1 -d " ") -- /opt/pwx/bin/pxctl cluster token show 2>/dev/null | cut -f 3 -d " ")
-  echo $token | grep -Eq '\w{128}'
-  [ $? -eq 0 ] && break
-  sleep 5
-  echo waiting for portworx
-done
-
-UUID=$(kubectl get stc -n portworx -o jsonpath='{.items[].status.clusterUid}')
 S3_ACCESS_KEY=$(sed -n 's/aws_access_key_id[ =]*//p' /root/.aws/credentials 2>/dev/null | head -1)
 S3_SECRET_KEY=$(sed -n 's/aws_secret_access_key[ =]*//p' /root/.aws/credentials 2>/dev/null | head -1)
 
 S3_BUCKET_REGION=$(aws s3api get-bucket-location --bucket $DR_BUCKET --output text)
 # Region us-east-1 returns "None" instead of the region name
 if [ "$S3_BUCKET_REGION" = "None" ]; then
-  BUCKET_REGION="us-east-1"
+  S3_BUCKET_REGION="us-east-1"
 fi
 echo "Bucket region: $S3_BUCKET_REGION"
-
 
 while : ;do
     host=$(kubectl get svc -n portworx portworx-service -o jsonpath='{.status.loadBalancer.ingress[].hostname}')
     [ "$host" ] && break
-    sleep 1
+    echo "waiting for px service LB hostname"
+    sleep 5
 done
 
-mkdir /root/drscripts
-
-PX_POD=$(kubectl get pods -l name=portworx -n portworx -o jsonpath='{.items[0].metadata.name}')
-
-# run dummy "pxctl credentials list" to get driver ready
-CRED_CMD="pxctl credentials list"
-kubectl exec $PX_POD -n portworx -- /opt/pwx/bin/$CRED_CMD
-
-CRED_CMD="pxctl credentials create --provider s3 --s3-access-key $S3_ACCESS_KEY --s3-secret-key $S3_SECRET_KEY --s3-region $S3_BUCKET_REGION --s3-endpoint s3.$S3_BUCKET_REGION.amazonaws.com --s3-storage-class STANDARD --bucket $DR_BUCKET clusterPair_$UUID"
-
-PX_POD=$(kubectl get pods -l name=portworx -n portworx -o jsonpath='{.items[0].metadata.name}')
-kubectl exec $PX_POD -n portworx -- /opt/pwx/bin/$CRED_CMD
-
-
-storkctl generate clusterpair -n kube-system remotecluster | sed "/insert_storage_options_here/c\    ip: $host\n    token: $token\n" >/root/drscripts/cp.yaml
-
 # create preparation script for source cluster
-cat <<EOF >>/root/drscripts/prepare_migrate_dr_source.sh
+cat <<EOF >/root/drscripts/prepare_migrate_dr_source.sh
+echo "writing dest kubeconfig"
+echo $migration_dest_kubeconfig | base64 -d > /tmp/migration_dest_kubeconfig
 
+echo "writing src kubeconfig"
+kubectl apply -f /assets/eks-multicloud-target/serviceaccount.yaml
+clusterapi=\$(cat /root/.kube/config  | grep server | cut -d: -f2-)
+bash /assets/eks-multicloud-target/kubeconfig.sh \$clusterapi > /tmp/migration_src_kubeconfig
+
+echo "creating PX AWS stork credentials"
 echo "[default]" > ./credentials
 echo "aws_access_key_id = $S3_ACCESS_KEY" >> ./credentials
 echo "aws_secret_access_key = $S3_SECRET_KEY" >> ./credentials
-
-kubectl pxc $CRED_CMD
 kubectl create secret  generic --from-file=./credentials -n portworx aws-creds
-kubectl patch stc/px-deploy-1  --type merge  -n portworx -p '{"spec": {
+storagecluster=\$(kubectl get stc -n portworx -o jsonpath='{.items[].metadata.name}')
+kubectl annotate stc \$storagecluster -n portworx portworx.io/service-type="LoadBalancer" --overwrite
+kubectl patch stc/\$storagecluster --type merge  -n portworx -p '{"spec": {
   "stork": {
       "volumes": [
        {
@@ -83,7 +75,16 @@ kubectl patch stc/px-deploy-1  --type merge  -n portworx -p '{"spec": {
      }
 }}'
 
-kubectl apply -f ./cp.yaml
+while : ;do
+    host=\$(kubectl get svc -n portworx portworx-service -o jsonpath='{.status.loadBalancer.ingress[].ip}')
+    [ "\$host" ] && break
+    echo "waiting for px service LB IP"
+    sleep 5
+done
+
+echo "creating clusterpair"
+storkctl create clusterpair remotecluster -n kube-system --mode migration --bucket $DR_BUCKET --provider s3 --s3-access-key $S3_ACCESS_KEY --s3-secret-key $S3_SECRET_KEY --s3-endpoint s3.amazonaws.com --s3-region $S3_BUCKET_REGION --dest-kube-file /tmp/migration_dest_kubeconfig --src-kube-file /tmp/migration_src_kubeconfig
+
 EOF
 
 chmod +x /root/drscripts/prepare_migrate_dr_source.sh
@@ -93,8 +94,8 @@ cat <<EOF >> /etc/motd
 +================================================+
 Howto setup multi cloud Migrate/Async DR Source
 +================================================+
-- Copy content of /root/drscripts to source master and execute
-- on target system you could use /assets/app-migration.yml to setup migration
+- Copy content of /root/drscripts to source master and execute to create clusterpair
+- on target system you can use /assets/app-migration.yml to setup migration
 +================================================+
 EOF
 

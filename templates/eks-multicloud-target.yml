@@ -3,11 +3,12 @@
 #
 # Requires:
 # working settings for Cloud AWS
-# env variable DR_BUCKET in defaults.yml pointing to existing AWS S3 Bucket
+# env variable DR_BUCKET in defaults.yml pointing to existing AWS S3 Bucket accessible with the provided aws credentials 
 #
-# creates directory /root/drscripts containing clusterpair spec and setup script for source cluster
+# creates directory /root/drscripts setup script for source cluster
 # when 'px-deploy status' is ready copy master node directory /root/drscripts to source px cluster and execute setup script
-# clusterpair should then be ready on source cluster
+# clusterpair should then be ready on source & destination cluster
+# validated with aks source cluster
 #
 # Maintainer: Daniel Paul
 #
