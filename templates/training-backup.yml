@@ -2,9 +2,11 @@ description: Deploys training clusters
 px_version: 3.5.1
 k8s_version: 1.33.5
 scripts: ["install-px", "training-backup-cluster"]
+aws_ebs: "gp2:100"
 cluster:
   - id: 1
     scripts: ["install-awscli", "snoop", "helm-backup", "training-backup-bastion", "wetty" ]
-    nodes: 4
+    nodes: 5
+    aws_type: t3.2xlarge
 env:
   pxb_version: "2.10.2"
