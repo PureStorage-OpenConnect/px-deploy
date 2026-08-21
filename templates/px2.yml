@@ -1,0 +1,7 @@
+description: Install and run Portworx on each cluster
+scripts: ["install-px"]
+aws_ebs: ""
+aws_type: t3.2xlarge
+env:
+  cloud_drive: type%3Dgp3%2Csize%3D150
+  px_store: v2
