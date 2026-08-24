@@ -41,14 +41,9 @@ if [ "$cloud_drive" ]; then
     url="$url&e=AZURE_CLIENT_ID%3D$azure_client_id%2CAZURE_CLIENT_SECRET%3D$azure_client_secret%2CAZURE_TENANT_ID%3D$azure_tenant_id"
   fi
   url="$url&s=%22$cloud_drive%2Ctags%3Dpxd_uuid_cd%3A$pxd_uuid%22&mz=0&kd=$cloud_drive%2Ctags%3Dpxd_uuid_cd%3A$pxd_uuid"
-  
-  [ "$cloud" = aws ] && url="$url&ce=aws"
-  [ "$cloud" = gcp ] && url="$url&ce=gce"
-  [ "$cloud" = azure ] && url="$url&ce=azure"
-
-fi
-if [ "$journal" ]; then
-  url="$url&j=$journal"
+  [ "$cloud" = aws ] && url="$url&eks=true"
+  [ "$cloud" = gcp ] && url="$url&gke=true"
+  [ "$cloud" = azure ] && url="$url&aks=true"
 fi
 
 if [ "$promop" = false ] || [ "$platform" = ocp4 ]; then
@@ -57,9 +52,10 @@ else
   url="$url&promop=true&mon=true"
 fi
 
+[ "$journal" ] && url="$url&j=$journal"
+[ "$px_store" = v2 ] && url="$url&dmthin=true"
 [ "$px_suffix" ] && url="$url&$px_suffix"
 [ "$vsphere_suffix" ] && url="$url&$vsphere_suffix"
-[ "$platform" = eks ] && url="$url&eks=true"
 [ "$platform" = ocp4 ] && url="$url&r=17001"
 [ "$security" = true ] && url="$url&security=true"
 [ "$etcd" = EXTERNAL ] && url="$url&k=etcd:http://$(grep master-1 /etc/hosts | cut -d\  -f1):2382"
@@ -115,15 +111,11 @@ if [ "$secrets" = vault ]; then
   url="$url&st=vault&e=VAULT_ADDR%3Dhttp://master-$cluster:8200"
 fi
 
-if [ "$platform" = gke ]; then
-  url="$url&gke=true"
-fi
-
 if [ "$platform" = aks ]; then
-  url="$url&aks=true"
   kubectl create secret generic -n portworx px-azure --from-literal=AZURE_TENANT_ID=$azure_tenant_id --from-literal=AZURE_CLIENT_ID=$azure_client_id --from-literal=AZURE_CLIENT_SECRET=$azure_client_secret
 fi
 
+echo StorageCluster from $url
 curl -sko /tmp/px.yml $url
 sed -i 's/namespace: kube-system/namespace: portworx/' /tmp/px.yml
 sed -i 's/imagePullPolicy: Always/imagePullPolicy: IfNotPresent/' /tmp/px.yml
