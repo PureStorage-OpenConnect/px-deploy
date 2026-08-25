@@ -21,7 +21,7 @@ done
 kubectl label node $(hostname) node-role.kubernetes.io/master=master
 
 echo "Applying Flannel"
-kubectl apply -f https://raw.githubusercontent.com/flannel-io/flannel/v0.25.1/Documentation/kube-flannel.yml
+kubectl apply -f https://raw.githubusercontent.com/flannel-io/flannel/v0.28.9/Documentation/kube-flannel.yml
 kubectl config set-context --current --namespace=default
 
 # on aws ec2 install aws-load-balancer-controller and external-dns
