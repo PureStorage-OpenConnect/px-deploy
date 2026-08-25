@@ -3,8 +3,8 @@ platform: k8s
 clusters: 1
 nodes: 3
 #ssh_pub_key: "ssh-rsa XXXXXXXXXXXXXXXXXXXXXX user@example"
-k8s_version: 1.33.5
-px_version: 3.6.2
+k8s_version: 1.35.6
+px_version: 3.6.2.2
 quiet: false
 tags: "project=pxdeploy"
 
