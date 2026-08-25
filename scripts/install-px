@@ -53,7 +53,7 @@ else
 fi
 
 [ "$journal" ] && url="$url&j=$journal"
-[ "$px_store" = v2 ] && url="$url&dmthin=true"
+[ "$px_store" = v2 ] && url="$url&dmthin=true&md=type%3Dgp3%2Csize%3D64%2Ctags%3Dpxd_uuid_cd%3A$pxd_uuid"
 [ "$px_suffix" ] && url="$url&$px_suffix"
 [ "$vsphere_suffix" ] && url="$url&$vsphere_suffix"
 [ "$platform" = ocp4 ] && url="$url&r=17001"
