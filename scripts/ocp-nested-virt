@@ -1,0 +1,13 @@
+instances=$(oc get machines -n openshift-machine-api -l machine.openshift.io/cluster-api-machine-type=worker -ojson | jq -r ".items[].status.providerStatus.instanceId")
+
+echo "stopping $instances"
+aws ec2 stop-instances --instance-ids $instances --skip-os-shutdown
+echo "waiting for ec2 instances to stop"
+aws ec2 wait instance-stopped --instance-ids $instances
+for i in $instances; do
+        aws ec2 modify-instance-cpu-options --instance-id $i --nested-virtualization enabled
+done
+echo "starting $instances"
+aws ec2 start-instances --instance-ids $instances
+echo "waiting for ec2 instances to start"
+aws ec2 wait instance-running --instance-ids $instances
