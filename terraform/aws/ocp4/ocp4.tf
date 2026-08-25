@@ -48,15 +48,39 @@ resource "aws_nat_gateway" "natgw" {
 }
 
 
-resource "aws_subnet" "ocp4_private" {
+resource "aws_subnet" "ocp4_private1" {
   count	= var.clusters
   vpc_id = aws_vpc.vpc.id
-  availability_zone = aws_subnet.subnet[count.index].availability_zone
+  #availability_zone = aws_subnet.subnet[count.index].availability_zone
+  availability_zone = data.aws_availability_zones.available.names[0]
   cidr_block = "192.168.${count.index + 151}.0/24"
   tags = {
-    Name = format("%s-%s-ocp4-private-subnet-%s",var.name_prefix,var.config_name, count.index + 1)
+    Name = format("%s-%s-ocp4-private1-subnet-%s",var.name_prefix,var.config_name, count.index + 1)
   }
 }
+
+resource "aws_subnet" "ocp4_private2" {
+  count	= var.clusters
+  vpc_id = aws_vpc.vpc.id
+  #availability_zone = aws_subnet.subnet[count.index].availability_zone
+  availability_zone = data.aws_availability_zones.available.names[1]
+  cidr_block = "192.168.${count.index + 181}.0/24"
+  tags = {
+    Name = format("%s-%s-ocp4-private2-subnet-%s",var.name_prefix,var.config_name, count.index + 1)
+  }
+}
+
+resource "aws_subnet" "ocp4_private3" {
+  count	= var.clusters
+  vpc_id = aws_vpc.vpc.id
+  #availability_zone = aws_subnet.subnet[count.index].availability_zone
+  availability_zone = data.aws_availability_zones.available.names[2]
+  cidr_block = "192.168.${count.index + 111}.0/24"
+  tags = {
+    Name = format("%s-%s-ocp4-private3-subnet-%s",var.name_prefix,var.config_name, count.index + 1)
+  }
+}
+
 
 resource "aws_route_table" "rt_sn_private" {
   count	= var.clusters        
@@ -71,10 +95,56 @@ resource "aws_route_table" "rt_sn_private" {
   }
 }
 
-resource "aws_route_table_association" "rta_private" {
+resource "aws_route_table_association" "rta_private1" {
     count               = var.clusters
-    subnet_id           = aws_subnet.ocp4_private[count.index].id
+    subnet_id           = aws_subnet.ocp4_private1[count.index].id
     route_table_id      = aws_route_table.rt_sn_private[count.index].id
+}
+
+resource "aws_route_table_association" "rta_private2" {
+    count               = var.clusters
+    subnet_id           = aws_subnet.ocp4_private2[count.index].id
+    route_table_id      = aws_route_table.rt_sn_private[count.index].id
+}
+
+resource "aws_route_table_association" "rta_private3" {
+    count               = var.clusters
+    subnet_id           = aws_subnet.ocp4_private3[count.index].id
+    route_table_id      = aws_route_table.rt_sn_private[count.index].id
+}
+
+resource "aws_subnet" "ocp_public2" {
+	count					= 	var.clusters
+	availability_zone 		= 	data.aws_availability_zones.available.names[1]
+	map_public_ip_on_launch =   true
+  vpc_id 					=	aws_vpc.vpc.id
+	cidr_block 				= 	"192.168.${count.index + 11}.0/24"
+	tags = {
+		Name = format("%s-%s-ocp-public2-%s",var.name_prefix,var.config_name, count.index + 1)
+	}
+}
+
+resource "aws_subnet" "ocp_public3" {
+	count					= 	var.clusters
+	availability_zone 		= 	data.aws_availability_zones.available.names[2]
+  map_public_ip_on_launch =   true
+	vpc_id 					=	aws_vpc.vpc.id
+	cidr_block 				= 	"192.168.${count.index + 41}.0/24"
+	tags = {
+		Name = format("%s-%s-ocp-public3-%s",var.name_prefix,var.config_name, count.index + 1)
+	}
+}
+
+resource "aws_route_table_association" "rt_ocp_pub2" {
+	count			= var.clusters
+	subnet_id 		= aws_subnet.ocp_public2[count.index].id
+	route_table_id 	= aws_route_table.rt.id
+}
+
+resource "aws_route_table_association" "rt_ocp_pub3" {
+	count			= var.clusters
+	subnet_id 		= aws_subnet.ocp_public3[count.index].id
+	route_table_id 	= aws_route_table.rt.id
 }
 
 resource "aws_security_group" "sg_ocp-nodes" {
@@ -185,8 +255,12 @@ resource "local_file" "ocp4-install-config" {
                         tpl_aws_tag     = var.aws_tags
                         tpl_nodes       = each.value.nodecount
                         tpl_cidr        = var.aws_cidr_vpc
-                        tpl_privsubnet  = aws_subnet.ocp4_private[each.key - 1].id
-                        tpl_pubsubnet   = aws_subnet.subnet[each.key - 1].id
+                        tpl_privsubnet1  = aws_subnet.ocp4_private1[each.key - 1].id
+                        tpl_privsubnet2  = aws_subnet.ocp4_private2[each.key - 1].id
+                        tpl_privsubnet3  = aws_subnet.ocp4_private3[each.key - 1].id
+                        tpl_pubsubnet1   = aws_subnet.subnet[each.key - 1].id
+                        tpl_pubsubnet2   = aws_subnet.ocp_public2[each.key - 1].id
+                        tpl_pubsubnet3   = aws_subnet.ocp_public3[each.key - 1].id
                         tpl_ocp_sg      = aws_security_group.sg_ocp-nodes.id
                 }
         )

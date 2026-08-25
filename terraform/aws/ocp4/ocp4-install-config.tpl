@@ -36,11 +36,29 @@ platform:
 %{ endfor ~}
     vpc:
       subnets:
-      - id: ${tpl_privsubnet}
+      - id: ${tpl_privsubnet1}
         roles:
         - type: ClusterNode
         - type: ControlPlaneInternalLB
-      - id: ${tpl_pubsubnet}
+      - id: ${tpl_privsubnet2}
+        roles:
+        - type: ClusterNode
+        - type: ControlPlaneInternalLB
+      - id: ${tpl_privsubnet3}
+        roles:
+        - type: ClusterNode
+        - type: ControlPlaneInternalLB
+      - id: ${tpl_pubsubnet1}
+        roles:
+        - type: IngressControllerLB
+        - type: BootstrapNode
+        - type: ControlPlaneExternalLB
+      - id: ${tpl_pubsubnet2}
+        roles:
+        - type: IngressControllerLB
+        - type: BootstrapNode
+        - type: ControlPlaneExternalLB
+      - id: ${tpl_pubsubnet3}
         roles:
         - type: IngressControllerLB
         - type: BootstrapNode
