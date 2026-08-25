@@ -24,7 +24,7 @@ kubectl patch stc/$storagecluster  --type merge  -n portworx -p '{"spec": {
      }
 }}'
 
-kubectl annotate stc $storagecluster -n portworx portworx.io/service-type="LoadBalancer" --overwrite
+kubectl annotate stc $storagecluster -n portworx portworx.io/service-type="portworx-api:LoadBalancer" --overwrite
 
 S3_ACCESS_KEY=$(sed -n 's/aws_access_key_id[ =]*//p' /root/.aws/credentials 2>/dev/null | head -1)
 S3_SECRET_KEY=$(sed -n 's/aws_secret_access_key[ =]*//p' /root/.aws/credentials 2>/dev/null | head -1)
@@ -59,7 +59,7 @@ echo "aws_access_key_id = $S3_ACCESS_KEY" >> ./credentials
 echo "aws_secret_access_key = $S3_SECRET_KEY" >> ./credentials
 kubectl create secret  generic --from-file=./credentials -n portworx aws-creds
 storagecluster=\$(kubectl get stc -n portworx -o jsonpath='{.items[].metadata.name}')
-kubectl annotate stc \$storagecluster -n portworx portworx.io/service-type="LoadBalancer" --overwrite
+kubectl annotate stc \$storagecluster -n portworx portworx.io/service-type="portworx-api:LoadBalancer" --overwrite
 kubectl patch stc/\$storagecluster --type merge  -n portworx -p '{"spec": {
   "stork": {
       "volumes": [
@@ -76,7 +76,7 @@ kubectl patch stc/\$storagecluster --type merge  -n portworx -p '{"spec": {
 }}'
 
 while : ;do
-    host=\$(kubectl get svc -n portworx portworx-service -o jsonpath='{.status.loadBalancer.ingress[].ip}')
+    host=\$(kubectl get svc -n portworx portworx-api -o jsonpath='{.status.loadBalancer.ingress[].ip}')
     [ "\$host" ] && break
     echo "waiting for px service LB IP"
     sleep 5
