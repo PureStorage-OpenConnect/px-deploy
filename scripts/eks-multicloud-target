@@ -37,9 +37,9 @@ fi
 echo "Bucket region: $S3_BUCKET_REGION"
 
 while : ;do
-    host=$(kubectl get svc -n portworx portworx-service -o jsonpath='{.status.loadBalancer.ingress[].hostname}')
+    host=$(kubectl get svc -n portworx portworx-api -o jsonpath='{.status.loadBalancer.ingress[].hostname}')
     [ "$host" ] && break
-    echo "waiting for px service LB hostname"
+    echo "waiting for px service api LB hostname"
     sleep 5
 done
 
@@ -78,7 +78,7 @@ kubectl patch stc/\$storagecluster --type merge  -n portworx -p '{"spec": {
 while : ;do
     host=\$(kubectl get svc -n portworx portworx-api -o jsonpath='{.status.loadBalancer.ingress[].ip}')
     [ "\$host" ] && break
-    echo "waiting for px service LB IP"
+    echo "waiting for px service api LB IP"
     sleep 5
 done
 
