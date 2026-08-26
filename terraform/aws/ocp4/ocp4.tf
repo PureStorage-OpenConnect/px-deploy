@@ -75,7 +75,7 @@ resource "aws_subnet" "ocp4_private3" {
   vpc_id = aws_vpc.vpc.id
   #availability_zone = aws_subnet.subnet[count.index].availability_zone
   availability_zone = data.aws_availability_zones.available.names[2]
-  cidr_block = "192.168.${count.index + 111}.0/24"
+  cidr_block = "192.168.${count.index + 211}.0/24"
   tags = {
     Name = format("%s-%s-ocp4-private3-subnet-%s",var.name_prefix,var.config_name, count.index + 1)
   }
@@ -118,7 +118,7 @@ resource "aws_subnet" "ocp_public2" {
 	availability_zone 		= 	data.aws_availability_zones.available.names[1]
 	map_public_ip_on_launch =   true
   vpc_id 					=	aws_vpc.vpc.id
-	cidr_block 				= 	"192.168.${count.index + 11}.0/24"
+	cidr_block 				= 	"192.168.${count.index + 31}.0/24"
 	tags = {
 		Name = format("%s-%s-ocp-public2-%s",var.name_prefix,var.config_name, count.index + 1)
 	}
@@ -129,7 +129,7 @@ resource "aws_subnet" "ocp_public3" {
 	availability_zone 		= 	data.aws_availability_zones.available.names[2]
   map_public_ip_on_launch =   true
 	vpc_id 					=	aws_vpc.vpc.id
-	cidr_block 				= 	"192.168.${count.index + 41}.0/24"
+	cidr_block 				= 	"192.168.${count.index + 61}.0/24"
 	tags = {
 		Name = format("%s-%s-ocp-public3-%s",var.name_prefix,var.config_name, count.index + 1)
 	}
