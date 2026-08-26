@@ -16,7 +16,7 @@ for i in $(seq 1 $clusters); do
 done
 
 # Install pxctl
-cp /assets/pxctl.sh /usr/bin/pxctl
+install -m 755 /assets/pxctl.sh /usr/bin/pxctl
 
 # Collect kubeconfigs and motds
 for i in $(seq 1 $clusters); do
@@ -25,7 +25,7 @@ for i in $(seq 1 $clusters); do
     sleep 2
   done
   echo trying to copy motd from cluster $i
-  while ! scp master-$i:/etc/motd /tmp/motd.$i; do
+  while ! scp master-$i:/etc/motd /tmp/motd.$i || test -s /tmp/motd.$i; do
     sleep 2
   done
   chown training$i.training$i /home/training$i/.kube/config
