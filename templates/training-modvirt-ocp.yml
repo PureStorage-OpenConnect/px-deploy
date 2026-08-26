@@ -1,7 +1,8 @@
 description: Deploys training clusters
 platform: ocp4
-aws_type: "c5n.metal"
+aws_type: "c8i.4xlarge"
 ocp4_version: 4.21.6
+scripts: ["install-awscli", "ocp-nested-virt"]
 cluster:
   - id: 1
-    scripts: ["install-awscli", "wetty", "snoop", "training-modvirt-ocp-bastion", "install-virtctl"]
+    scripts: ["wetty", "snoop", "training-modvirt-ocp-bastion", "install-virtctl"]

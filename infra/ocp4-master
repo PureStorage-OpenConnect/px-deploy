@@ -52,15 +52,15 @@ Password: $CRED
 EOF
 
 # set ocp ui console banner color
-case "$cluster" in
-  1) bgcolor='#fe5000' ;;  # orange
-  2) bgcolor='#40b605' ;;  # green
-  3) bgcolor='#0074d9' ;;  # blue
-  4) bgcolor='#8e44ad' ;;  # purple
-  5) bgcolor='#ffdc00' ;;  # yellow
-  6) bgcolor='#ff4136' ;;  # red
-  7) bgcolor='#7fdbff' ;;  # light blue
-  8) bgcolor='#145a32' ;;  # dark green
+case "$[$cluster%8]" in
+  0) bgcolor='#fe5000' ;;  # orange
+  1) bgcolor='#40b605' ;;  # green
+  2) bgcolor='#0074d9' ;;  # blue
+  3) bgcolor='#8e44ad' ;;  # purple
+  4) bgcolor='#ffdc00' ;;  # yellow
+  5) bgcolor='#ff4136' ;;  # red
+  6) bgcolor='#7fdbff' ;;  # light blue
+  7) bgcolor='#145a32' ;;  # dark green
 esac
 
 cat <<EOF | kubectl apply -f -
