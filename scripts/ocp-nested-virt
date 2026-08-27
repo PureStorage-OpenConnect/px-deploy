@@ -1,4 +1,8 @@
-instances=$(oc get machines -n openshift-machine-api -l machine.openshift.io/cluster-api-machine-type=worker -ojson | jq -r ".items[].status.providerStatus.instanceId")
+ALLINSTANCES=$(oc get machines -n openshift-machine-api -l machine.openshift.io/cluster-api-machine-type=worker -ojson | jq -r ".items[].status.providerStatus.instanceId")
+
+echo "worker node instances $ALLINSTANCES"
+
+instances=$(aws ec2 describe-instances --instance-ids $ALLINSTANCES --query "Reservations[].Instances[?CpuOptions.NestedVirtualization==\`null\`].InstanceId" --output text)
 
 echo "stopping $instances"
 aws ec2 stop-instances --instance-ids $instances --skip-os-shutdown
