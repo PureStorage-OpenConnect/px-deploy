@@ -15,12 +15,14 @@ cat <<EOF >/etc/exports
 EOF
 systemctl enable --now nfs-server
 
-ETCD_VER=v3.4.14
-curl -L https://storage.googleapis.com/etcd/${ETCD_VER}/etcd-${ETCD_VER}-linux-amd64.tar.gz -o /tmp/etcd-${ETCD_VER}-linux-amd64.tar.gz
-cd /usr/bin
-tar xzvf /tmp/etcd-${ETCD_VER}-linux-amd64.tar.gz etcd-v3.4.14-linux-amd64/etcdctl --strip-components=1
-curl -sL https://github.com/derailed/k9s/releases/download/v0.24.8/k9s_Linux_x86_64.tar.gz | tar xz k9s
+(
+ ETCD_VER=v3.4.14
+ curl -L https://storage.googleapis.com/etcd/${ETCD_VER}/etcd-${ETCD_VER}-linux-amd64.tar.gz -o /tmp/etcd-${ETCD_VER}-linux-amd64.tar.gz
+ cd /usr/bin
+ tar xzvf /tmp/etcd-${ETCD_VER}-linux-amd64.tar.gz etcd-v3.4.14-linux-amd64/etcdctl --strip-components=1
+ curl -sL https://github.com/derailed/k9s/releases/download/v0.24.8/k9s_Linux_x86_64.tar.gz | tar xz k9s
+) & 
 
-curl -fsSL -o get_helm.sh https://raw.githubusercontent.com/helm/helm/master/scripts/get-helm-3
-chmod 700 get_helm.sh
-HELM_INSTALL_DIR=/usr/bin ./get_helm.sh
+dnf install -y helm &
+
+wait
