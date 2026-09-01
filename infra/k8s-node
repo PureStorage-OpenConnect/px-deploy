@@ -3,13 +3,16 @@ ctr -n k8s.io images pull docker.io/$(curl -sk "https://install.portworx.com/$px
 ctr -n k8s.io images pull docker.io/portworx/px-enterprise:$px_version &
 ctr -n k8s.io images pull docker.io/portworx/oci-monitor:$px_version &
 while : ; do
+  echo Trying to get join from master-$cluster
   command=$(ssh -oConnectTimeout=1 -oStrictHostKeyChecking=no master-$cluster kubeadm token create --print-join-command)
   echo $command | grep -qE '[0-9a-f]{64}'
   [ $? -eq 0 ] && break
   sleep 5
 done
-echo "Executing '$command'"
-eval $command
+while ! eval $command; do
+  echo Failed to execute join command, retrying...
+  sleep 1
+done
 wait
 # set role for this node
 ssh -oConnectTimeout=1 -oStrictHostKeyChecking=no master-$cluster kubectl label node $(hostname) node-role.kubernetes.io/worker=worker
