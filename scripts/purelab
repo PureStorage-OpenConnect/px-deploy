@@ -104,8 +104,10 @@ spec:
     app: nginx
 EOF
 
-mkdir /root/support
-cd /root/support
+mkdir /support
+echo "/support 192.168.0.0/16(ro)" >>/etc/exports
+exportfs -a
+cd /support
 logs="log_bundle_ct0.zip log_bundle_ct1.zip fb-logs.zip"
 files="purediag puremagic busymeter.html busymeter_process perf_report purebusymeter"
 for i in $logs $files; do
@@ -114,17 +116,22 @@ done
 
 kubectl rollout status sts/node-desktop -n purelab --timeout=300s
 for i in $(kubectl get pod -n purelab -l app=node-desktop -o jsonpath='{.items[*].metadata.name}'); do
+  (
   echo copying files to pod $i
+  kubectl exec -n purelab $i -- apt install -y nfs-common
   kubectl exec -n purelab $i -- mkdir -p /support/Toolkit /support/logs
+  kubectl exec -n purelab $i -- mount 192.168.101.90:/support /mnt
   for j in $logs; do
-    kubectl cp -n purelab $j $i:/support
+    kubectl exec -n purelab $i -- cp -v /mnt/$j /support
   done
   for j in $files; do
-    kubectl cp -n purelab $j $i:/support/Toolkit
+    kubectl exec -n purelab $i -- install -v -m 755 /mnt/$j /support/Toolkit
   done
+  kubectl exec -n purelab $i -- umount /mnt
   kubectl exec -n purelab $i -- chown -R headless.headless /support
-  eval kubectl exec -n purelab $i -- chmod 755 /support/Toolkit/{$(echo $files | sed 's/ /,/g')}
+  ) &
 done
+wait
 echo finished copying files
 kubectl delete pod -n purelab --field-selector=status.phase=Failed
 
