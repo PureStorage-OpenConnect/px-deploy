@@ -77,7 +77,7 @@ spec:
         volumeMounts:
         - name: data
           mountPath: "/data"
-        image: minio/minio:RELEASE.2025-06-13T11-33-47Z
+        image: elestio/minio:latest
         command:
         - /bin/bash
         - -c
