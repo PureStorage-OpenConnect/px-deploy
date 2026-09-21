@@ -3,14 +3,14 @@ NAMESPACE=central
 if [ -v pxb_version ]; then
   VERSION=$pxb_version
 else
+  # ensure to update px cli to supported version
   VERSION=3.1.1
 fi
 
 kubectl apply -f /assets/helm-backup/namespace.yml
 
 curl -O https://raw.githubusercontent.com/portworx/helm/master/stable/px-central-$VERSION.tgz
-helm install px-central px-central-$VERSION.tgz --namespace $NAMESPACE --create-namespace --version $VERSION --skip-crds --set persistentStorage.enabled=true,persistentStorage.storageClassName="px-csi-db",pxbackup.enabled=true,oidc.centralOIDC.updateAdminProfile=false,pxbackup.deployDedicatedMonitoringSystem=false,pxbackup.usePxBackupEmailAlertTemplate=false,pxbackup.prometheusEndpoint="http://px-prometheus.portworx.svc:9090",pxbackup.alertmanagerEndpoint="http://alertmanager.portworx.svc:9090"
-
+helm install px-central px-central-$VERSION.tgz --namespace $NAMESPACE --create-namespace --version $VERSION --skip-crds --set persistentStorage.enabled=true,persistentStorage.storageClassName="px-csi-db",pxbackup.enabled=true,oidc.centralOIDC.updateAdminProfile=false,pxbackup.prometheus.replicas=1,pxbackup.alertmanager.replicas=1,service.pxCentralUIServiceType="LoadBalancer",service.pxBackupUIServiceType="LoadBalancer"
 until (kubectl get po -n $NAMESPACE -ljob-name=pxcentral-post-install-hook  -o wide | awk '{print $1, $2, $3}' |grep "Completed"); do echo "Waiting for post install hook";sleep 3; done
 until (kubectl get po -n $NAMESPACE -lapp=px-backup  -o wide | awk '{print $1, $2, $3}' | grep "Running" | grep "1/1"); do echo "Waiting for backup service";sleep 3; done
 
@@ -69,6 +69,22 @@ else  # platform is k8s on aws
   kubectl apply -f /assets/helm-backup/backup-grpc-api-svc.yml
   backupPort=$(kubectl get svc px-backup-api-grpc -n central -o=jsonpath='{.spec.ports[?(@.port==10002)].nodePort}')
   PXB_URL=$(kubectl get svc px-backup-ui -n central -o=jsonpath='{.status.loadBalancer.ingress[0].hostname}')
+  
+  PXB_PROMETHEUS_PW=$(kubectl get secret pxc-backup-metrics -n central -o jsonpath='{.data.password}' | base64 -d)
+  sed -i "s/<PXB_PROMETHEUS_PASSWORD>/$PXB_PROMETHEUS_PW/" /assets/grafana/grafana-datasource.yaml
+  kubectl -n portworx delete configmap grafana-source-config
+  kubectl -n portworx create configmap grafana-source-config --from-file=/assets/grafana/grafana-datasource.yaml
+  
+  sed -i "s/\${DS_PX-BACKUP}/P2A6756613D5CF575/" /assets/helm-backup/grafana-global-operations.json
+  sed -i "s/\${DS_PX-BACKUP}/P2A6756613D5CF575/" /assets/helm-backup/grafana-kubevirt.json
+  sed -i "s/\${DS_PX-BACKUP}/P2A6756613D5CF575/" /assets/helm-backup/grafana-namespace.json
+
+  kubectl patch cm grafana-dashboards  -n portworx --type=merge -p "{\"data\":{\"grafana-global-operations.json\":$(jq -Rs . < /assets/helm-backup/grafana-global-operations.json)}}"
+  kubectl patch cm grafana-dashboards  -n portworx --type=merge -p "{\"data\":{\"grafana-kubevirt.json\":$(jq -Rs . < /assets/helm-backup/grafana-kubevirt.json)}}"
+  kubectl patch cm grafana-dashboards  -n portworx --type=merge -p "{\"data\":{\"grafana-namespace.json\":$(jq -Rs . < /assets/helm-backup/grafana-namespace.json)}}"
+  
+  kubectl -n portworx delete pod -l app=grafana
+  # OCP exceptions
 fi
 
 px pxb init config  --px-backup-api-url http://$backupIP:$backupPort --pxcentral-auth-url http://$authIP:$authPort

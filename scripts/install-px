@@ -167,6 +167,9 @@ kubectl -n portworx create configmap grafana-dashboards \
 --from-file=/assets/grafana/portworx-dr-dashboard.json
 kubectl -n portworx create configmap grafana-dashboard-config --from-file=/assets/grafana/grafana-dashboard-config.yaml
 
+GRAFANA_ADMIN_PW=$(openssl rand -base64 12)
+kubectl create secret generic grafana-admin-secret -n portworx --from-literal=admin-password="$GRAFANA_ADMIN_PW"
+
 if [ $platform = k8s ]; then
   kubectl -n portworx create configmap grafana-source-config --from-file=/assets/grafana/grafana-datasource.yaml
   kubectl -n portworx apply -f /assets/grafana/node-exporter.yaml
@@ -194,3 +197,20 @@ while ! kubectl cp -n portworx $STORK_POD:/storkctl/linux/storkctl /usr/local/bi
 done
 chmod +x /usr/local/bin/storkctl
 storkctl completion bash >/etc/bash_completion.d/storkctl
+
+grafanaIP=$(kubectl get svc grafana -n portworx -o json | jq -r ".status.loadBalancer.ingress[0].hostname")
+ 
+while [ $grafanaIP = "null" ]; do
+  sleep 2
+  echo "PX grafana LB not assigned"
+  grafanaIP=$(kubectl get svc grafana -n portworx -o json | jq -r ".status.loadBalancer.ingress[0].hostname")
+done
+echo "PX grafana LB assigned: $grafanaIP"
+
+cat <<EOF >> /etc/motd
++================================================+
+Portworx Grafana User Interface Access URL : http://$grafanaIP:3000
+Portworx Grafana admin user name: admin
+Portworx Grafana admin user password: $GRAFANA_ADMIN_PW
++================================================+
+EOF

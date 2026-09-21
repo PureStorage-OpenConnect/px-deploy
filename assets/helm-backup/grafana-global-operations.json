@@ -1,0 +1,638 @@
+{
+  "__inputs": [
+    {
+      "name": "DS_PX-BACKUP",
+      "label": "px-backup",
+      "description": "Prometheus data source scraping Portworx Backup metrics",
+      "type": "datasource",
+      "pluginId": "prometheus",
+      "pluginName": "Prometheus"
+    }
+  ],
+  "__elements": {},
+  "__requires": [
+    { "type": "grafana", "id": "grafana", "name": "Grafana", "version": "11.6.0" },
+    { "type": "datasource", "id": "prometheus", "name": "Prometheus", "version": "1.0.0" },
+    { "type": "panel", "id": "stat", "name": "Stat", "version": "" },
+    { "type": "panel", "id": "timeseries", "name": "Time series", "version": "" },
+    { "type": "panel", "id": "table", "name": "Table", "version": "" },
+    { "type": "panel", "id": "piechart", "name": "Pie chart", "version": "" },
+    { "type": "panel", "id": "text", "name": "Text", "version": "" }
+  ],
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": { "type": "datasource", "uid": "grafana" },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "description": "Portworx Backup fleet and control-plane health: clusters, backup locations, operation trends, current backup/restore states, schedules, policies, rules and credentials.",
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "id": null,
+  "links": [],
+  "panels": [
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 },
+      "id": 1,
+      "panels": [],
+      "title": "Cluster Health",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${DS_PX-BACKUP}" },
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [],
+          "thresholds": { "mode": "absolute", "steps": [ { "color": "blue" } ] },
+          "unit": "none"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 4, "w": 4, "x": 0, "y": 1 },
+      "id": 100,
+      "options": {
+        "colorMode": "background", "graphMode": "none", "justifyMode": "auto",
+        "orientation": "horizontal", "reduceOptions": { "calcs": [ "lastNotNull" ], "fields": "", "values": false },
+        "showPercentChange": false, "textMode": "auto", "wideLayout": true
+      },
+      "pluginVersion": "11.6.0",
+      "targets": [
+        { "datasource": { "type": "prometheus", "uid": "${DS_PX-BACKUP}" },
+          "expr": "count(pxbackup_cluster_status{user_id=~\"$UserID\"}) OR vector(0)",
+          "format": "time_series", "legendFormat": "", "refId": "A" }
+      ],
+      "title": "Total Clusters",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${DS_PX-BACKUP}" },
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [],
+          "thresholds": { "mode": "absolute", "steps": [ { "color": "green" } ] },
+          "unit": "none"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 4, "w": 4, "x": 4, "y": 1 },
+      "id": 101,
+      "options": {
+        "colorMode": "background", "graphMode": "none", "justifyMode": "auto",
+        "orientation": "horizontal", "reduceOptions": { "calcs": [ "lastNotNull" ], "fields": "", "values": false },
+        "showPercentChange": false, "textMode": "auto", "wideLayout": true
+      },
+      "pluginVersion": "11.6.0",
+      "targets": [
+        { "datasource": { "type": "prometheus", "uid": "${DS_PX-BACKUP}" },
+          "expr": "count(pxbackup_cluster_status{user_id=~\"$UserID\"}==1) OR vector(0)",
+          "format": "time_series", "legendFormat": "", "refId": "A" }
+      ],
+      "title": "Online",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${DS_PX-BACKUP}" },
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [],
+          "thresholds": { "mode": "absolute", "steps": [ { "color": "green" }, { "color": "red", "value": 1 } ] },
+          "unit": "none"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 4, "w": 4, "x": 8, "y": 1 },
+      "id": 102,
+      "options": {
+        "colorMode": "background", "graphMode": "none", "justifyMode": "auto",
+        "orientation": "horizontal", "reduceOptions": { "calcs": [ "lastNotNull" ], "fields": "", "values": false },
+        "showPercentChange": false, "textMode": "auto", "wideLayout": true
+      },
+      "pluginVersion": "11.6.0",
+      "targets": [
+        { "datasource": { "type": "prometheus", "uid": "${DS_PX-BACKUP}" },
+          "expr": "count(pxbackup_cluster_status{user_id=~\"$UserID\"}==2) OR vector(0)",
+          "format": "time_series", "legendFormat": "", "refId": "A" }
+      ],
+      "title": "Offline",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${DS_PX-BACKUP}" },
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [],
+          "thresholds": { "mode": "absolute", "steps": [ { "color": "green" }, { "color": "red", "value": 1 } ] },
+          "unit": "none"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 4, "w": 4, "x": 12, "y": 1 },
+      "id": 103,
+      "options": {
+        "colorMode": "background", "graphMode": "none", "justifyMode": "auto",
+        "orientation": "horizontal", "reduceOptions": { "calcs": [ "lastNotNull" ], "fields": "", "values": false },
+        "showPercentChange": false, "textMode": "auto", "wideLayout": true
+      },
+      "pluginVersion": "11.6.0",
+      "targets": [
+        { "datasource": { "type": "prometheus", "uid": "${DS_PX-BACKUP}" },
+          "expr": "count(pxbackup_cluster_status{user_id=~\"$UserID\"}==5) OR vector(0)",
+          "format": "time_series", "legendFormat": "", "refId": "A" }
+      ],
+      "title": "Failed",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${DS_PX-BACKUP}" },
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [],
+          "thresholds": { "mode": "absolute", "steps": [ { "color": "green" }, { "color": "yellow", "value": 1 } ] },
+          "unit": "none"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 4, "w": 4, "x": 16, "y": 1 },
+      "id": 104,
+      "options": {
+        "colorMode": "background", "graphMode": "none", "justifyMode": "auto",
+        "orientation": "horizontal", "reduceOptions": { "calcs": [ "lastNotNull" ], "fields": "", "values": false },
+        "showPercentChange": false, "textMode": "auto", "wideLayout": true
+      },
+      "pluginVersion": "11.6.0",
+      "targets": [
+        { "datasource": { "type": "prometheus", "uid": "${DS_PX-BACKUP}" },
+          "expr": "count(pxbackup_cluster_status{user_id=~\"$UserID\"}==0) OR vector(0)",
+          "format": "time_series", "legendFormat": "", "refId": "A" }
+      ],
+      "title": "Invalid",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${DS_PX-BACKUP}" },
+      "description": "Clusters not in the Online (1) state, with the reason reported by Portworx Backup.",
+      "fieldConfig": {
+        "defaults": { "custom": { "align": "auto", "filterable": true }, "mappings": [], "thresholds": { "mode": "absolute", "steps": [ { "color": "green" } ] } },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "Status" },
+            "properties": [
+              { "id": "mappings", "value": [
+                { "type": "value", "options": {
+                  "0": { "text": "Invalid", "color": "red", "index": 0 },
+                  "2": { "text": "Offline", "color": "red", "index": 1 },
+                  "3": { "text": "DeletePending", "color": "orange", "index": 2 },
+                  "4": { "text": "Pending", "color": "yellow", "index": 3 },
+                  "5": { "text": "Failed", "color": "red", "index": 4 },
+                  "6": { "text": "Success", "color": "green", "index": 5 }
+                } }
+              ] },
+              { "id": "custom.cellOptions", "value": { "type": "color-text" } }
+            ]
+          }
+        ]
+      },
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 5 },
+      "id": 105,
+      "options": { "cellHeight": "sm", "footer": { "countRows": false, "fields": "", "reducer": [ "sum" ], "show": false }, "showHeader": true },
+      "pluginVersion": "11.6.0",
+      "targets": [
+        { "datasource": { "type": "prometheus", "uid": "${DS_PX-BACKUP}" },
+          "expr": "pxbackup_cluster_status{user_id=~\"$UserID\"} != 1",
+          "format": "table", "instant": true, "legendFormat": "", "refId": "A" }
+      ],
+      "title": "Unhealthy Clusters",
+      "transformations": [
+        { "id": "organize", "options": {
+          "excludeByName": { "Time": true, "__name__": true, "org_id": true, "cluster_uid": true, "backfill": true, "timestamp_in_secs": true, "instance": true, "job": true },
+          "renameByName": { "name": "Cluster", "user_id": "User", "error_reason": "Reason", "Value": "Status" }
+        } }
+      ],
+      "type": "table"
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 13 },
+      "id": 2,
+      "panels": [],
+      "title": "Backup Location Health",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${DS_PX-BACKUP}" },
+      "fieldConfig": {
+        "defaults": { "mappings": [], "thresholds": { "mode": "absolute", "steps": [ { "color": "blue" } ] }, "unit": "none" },
+        "overrides": []
+      },
+      "gridPos": { "h": 4, "w": 4, "x": 0, "y": 14 },
+      "id": 110,
+      "options": { "colorMode": "background", "graphMode": "none", "justifyMode": "auto", "orientation": "horizontal", "reduceOptions": { "calcs": [ "lastNotNull" ], "fields": "", "values": false }, "showPercentChange": false, "textMode": "auto", "wideLayout": true },
+      "pluginVersion": "11.6.0",
+      "targets": [
+        { "datasource": { "type": "prometheus", "uid": "${DS_PX-BACKUP}" }, "expr": "count(pxbackup_backup_location_status{user_id=~\"$UserID\"}) OR vector(0)", "format": "time_series", "legendFormat": "", "refId": "A" }
+      ],
+      "title": "Total Locations",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${DS_PX-BACKUP}" },
+      "fieldConfig": {
+        "defaults": { "mappings": [], "thresholds": { "mode": "absolute", "steps": [ { "color": "green" } ] }, "unit": "none" },
+        "overrides": []
+      },
+      "gridPos": { "h": 4, "w": 4, "x": 4, "y": 14 },
+      "id": 111,
+      "options": { "colorMode": "background", "graphMode": "none", "justifyMode": "auto", "orientation": "horizontal", "reduceOptions": { "calcs": [ "lastNotNull" ], "fields": "", "values": false }, "showPercentChange": false, "textMode": "auto", "wideLayout": true },
+      "pluginVersion": "11.6.0",
+      "targets": [
+        { "datasource": { "type": "prometheus", "uid": "${DS_PX-BACKUP}" }, "expr": "count(pxbackup_backup_location_status{user_id=~\"$UserID\"}==1) OR vector(0)", "format": "time_series", "legendFormat": "", "refId": "A" }
+      ],
+      "title": "Valid",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${DS_PX-BACKUP}" },
+      "fieldConfig": {
+        "defaults": { "mappings": [], "thresholds": { "mode": "absolute", "steps": [ { "color": "green" }, { "color": "red", "value": 1 } ] }, "unit": "none" },
+        "overrides": []
+      },
+      "gridPos": { "h": 4, "w": 4, "x": 8, "y": 14 },
+      "id": 112,
+      "options": { "colorMode": "background", "graphMode": "none", "justifyMode": "auto", "orientation": "horizontal", "reduceOptions": { "calcs": [ "lastNotNull" ], "fields": "", "values": false }, "showPercentChange": false, "textMode": "auto", "wideLayout": true },
+      "pluginVersion": "11.6.0",
+      "targets": [
+        { "datasource": { "type": "prometheus", "uid": "${DS_PX-BACKUP}" }, "expr": "count(pxbackup_backup_location_status{user_id=~\"$UserID\"}==4) OR vector(0)", "format": "time_series", "legendFormat": "", "refId": "A" }
+      ],
+      "title": "Validation Failed",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${DS_PX-BACKUP}" },
+      "fieldConfig": {
+        "defaults": { "mappings": [], "thresholds": { "mode": "absolute", "steps": [ { "color": "green" }, { "color": "yellow", "value": 1 } ] }, "unit": "none" },
+        "overrides": []
+      },
+      "gridPos": { "h": 4, "w": 4, "x": 12, "y": 14 },
+      "id": 113,
+      "options": { "colorMode": "background", "graphMode": "none", "justifyMode": "auto", "orientation": "horizontal", "reduceOptions": { "calcs": [ "lastNotNull" ], "fields": "", "values": false }, "showPercentChange": false, "textMode": "auto", "wideLayout": true },
+      "pluginVersion": "11.6.0",
+      "targets": [
+        { "datasource": { "type": "prometheus", "uid": "${DS_PX-BACKUP}" }, "expr": "count(pxbackup_backup_location_status{user_id=~\"$UserID\"}==5) OR vector(0)", "format": "time_series", "legendFormat": "", "refId": "A" }
+      ],
+      "title": "Limited Availability",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${DS_PX-BACKUP}" },
+      "description": "Backup locations not in the Valid (1) state.",
+      "fieldConfig": {
+        "defaults": { "custom": { "align": "auto", "filterable": true }, "mappings": [], "thresholds": { "mode": "absolute", "steps": [ { "color": "green" } ] } },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "Status" },
+            "properties": [
+              { "id": "mappings", "value": [
+                { "type": "value", "options": {
+                  "0": { "text": "Invalid", "color": "red", "index": 0 },
+                  "2": { "text": "DeletePending", "color": "orange", "index": 1 },
+                  "3": { "text": "ValidationInProgress", "color": "yellow", "index": 2 },
+                  "4": { "text": "ValidationFailed", "color": "red", "index": 3 },
+                  "5": { "text": "LimitedAvailability", "color": "yellow", "index": 4 }
+                } }
+              ] },
+              { "id": "custom.cellOptions", "value": { "type": "color-text" } }
+            ]
+          }
+        ]
+      },
+      "gridPos": { "h": 7, "w": 24, "x": 0, "y": 18 },
+      "id": 114,
+      "options": { "cellHeight": "sm", "footer": { "countRows": false, "fields": "", "reducer": [ "sum" ], "show": false }, "showHeader": true },
+      "pluginVersion": "11.6.0",
+      "targets": [
+        { "datasource": { "type": "prometheus", "uid": "${DS_PX-BACKUP}" }, "expr": "pxbackup_backup_location_status{user_id=~\"$UserID\"} != 1", "format": "table", "instant": true, "legendFormat": "", "refId": "A" }
+      ],
+      "title": "Backup Locations Needing Attention",
+      "transformations": [
+        { "id": "organize", "options": {
+          "excludeByName": { "Time": true, "__name__": true, "org_id": true, "backfill": true, "timestamp_in_secs": true, "instance": true, "job": true },
+          "renameByName": { "name": "Location", "user_id": "User", "error_reason": "Reason", "Value": "Status" }
+        } }
+      ],
+      "type": "table"
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 25 },
+      "id": 3,
+      "panels": [],
+      "title": "Operations Trends",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${DS_PX-BACKUP}" },
+      "description": "Rate of backup operations over time, by status (derived from the pxbackup_backup_count counter).",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": { "axisBorderShow": false, "axisCenteredZero": false, "axisColorMode": "text", "axisLabel": "", "axisPlacement": "auto", "barAlignment": 0, "drawStyle": "line", "fillOpacity": 25, "gradientMode": "none", "hideFrom": { "legend": false, "tooltip": false, "viz": false }, "insertNulls": false, "lineInterpolation": "linear", "lineWidth": 1, "pointSize": 5, "scaleDistribution": { "type": "linear" }, "showPoints": "never", "spanNulls": false, "stacking": { "group": "A", "mode": "normal" }, "thresholdsStyle": { "mode": "off" } },
+          "mappings": [], "min": 0,
+          "thresholds": { "mode": "absolute", "steps": [ { "color": "green" } ] }, "unit": "short"
+        },
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "Failed" }, "properties": [ { "id": "color", "value": { "fixedColor": "red", "mode": "fixed" } } ] },
+          { "matcher": { "id": "byName", "options": "Success" }, "properties": [ { "id": "color", "value": { "fixedColor": "green", "mode": "fixed" } } ] }
+        ]
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 26 },
+      "id": 120,
+      "options": { "legend": { "calcs": [], "displayMode": "list", "placement": "bottom", "showLegend": true }, "tooltip": { "hideZeros": false, "mode": "multi", "sort": "desc" } },
+      "pluginVersion": "11.6.0",
+      "targets": [
+        { "datasource": { "type": "prometheus", "uid": "${DS_PX-BACKUP}" }, "expr": "sum by (status) (increase(pxbackup_backup_count{user_id=~\"$UserID\", cluster_name=~\"$Cluster\"}[$__rate_interval]))", "format": "time_series", "legendFormat": "{{status}}", "refId": "A" }
+      ],
+      "title": "Backup Operations Trend",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${DS_PX-BACKUP}" },
+      "description": "Rate of restore operations over time, by status (derived from the pxbackup_restore_count counter).",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": { "axisBorderShow": false, "axisCenteredZero": false, "axisColorMode": "text", "axisLabel": "", "axisPlacement": "auto", "barAlignment": 0, "drawStyle": "line", "fillOpacity": 25, "gradientMode": "none", "hideFrom": { "legend": false, "tooltip": false, "viz": false }, "insertNulls": false, "lineInterpolation": "linear", "lineWidth": 1, "pointSize": 5, "scaleDistribution": { "type": "linear" }, "showPoints": "never", "spanNulls": false, "stacking": { "group": "A", "mode": "normal" }, "thresholdsStyle": { "mode": "off" } },
+          "mappings": [], "min": 0,
+          "thresholds": { "mode": "absolute", "steps": [ { "color": "green" } ] }, "unit": "short"
+        },
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "Failed" }, "properties": [ { "id": "color", "value": { "fixedColor": "red", "mode": "fixed" } } ] },
+          { "matcher": { "id": "byName", "options": "Success" }, "properties": [ { "id": "color", "value": { "fixedColor": "green", "mode": "fixed" } } ] }
+        ]
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 26 },
+      "id": 121,
+      "options": { "legend": { "calcs": [], "displayMode": "list", "placement": "bottom", "showLegend": true }, "tooltip": { "hideZeros": false, "mode": "multi", "sort": "desc" } },
+      "pluginVersion": "11.6.0",
+      "targets": [
+        { "datasource": { "type": "prometheus", "uid": "${DS_PX-BACKUP}" }, "expr": "sum by (status) (increase(pxbackup_restore_count{user_id=~\"$UserID\", cluster=~\"$Cluster\"}[$__rate_interval]))", "format": "time_series", "legendFormat": "{{status}}", "refId": "A" }
+      ],
+      "title": "Restore Operations Trend",
+      "type": "timeseries"
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 34 },
+      "id": 4,
+      "panels": [],
+      "title": "Current States",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${DS_PX-BACKUP}" },
+      "description": "Distribution of current backup states across all backups (pxbackup_backup_status).",
+      "fieldConfig": {
+        "defaults": { "color": { "mode": "palette-classic" }, "mappings": [], "unit": "none" },
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "Failed" }, "properties": [ { "id": "color", "value": { "fixedColor": "red", "mode": "fixed" } } ] },
+          { "matcher": { "id": "byName", "options": "Success" }, "properties": [ { "id": "color", "value": { "fixedColor": "green", "mode": "fixed" } } ] },
+          { "matcher": { "id": "byName", "options": "Partial Success" }, "properties": [ { "id": "color", "value": { "fixedColor": "yellow", "mode": "fixed" } } ] }
+        ]
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 35 },
+      "id": 130,
+      "options": { "legend": { "displayMode": "table", "placement": "right", "showLegend": true, "values": [ "value" ] }, "pieType": "donut", "reduceOptions": { "calcs": [ "lastNotNull" ], "fields": "", "values": false }, "tooltip": { "mode": "single", "sort": "none" } },
+      "pluginVersion": "11.6.0",
+      "targets": [
+        { "datasource": { "type": "prometheus", "uid": "${DS_PX-BACKUP}" }, "expr": "count(pxbackup_backup_status{cluster=~\"$Cluster\", user_id=~\"$UserID\"}==6)", "format": "time_series", "legendFormat": "Success", "refId": "A" },
+        { "datasource": { "type": "prometheus", "uid": "${DS_PX-BACKUP}" }, "expr": "count(pxbackup_backup_status{cluster=~\"$Cluster\", user_id=~\"$UserID\"}==8)", "format": "time_series", "legendFormat": "Partial Success", "refId": "B" },
+        { "datasource": { "type": "prometheus", "uid": "${DS_PX-BACKUP}" }, "expr": "count(pxbackup_backup_status{cluster=~\"$Cluster\", user_id=~\"$UserID\"}==4)", "format": "time_series", "legendFormat": "Failed", "refId": "C" },
+        { "datasource": { "type": "prometheus", "uid": "${DS_PX-BACKUP}" }, "expr": "count(pxbackup_backup_status{cluster=~\"$Cluster\", user_id=~\"$UserID\"}==2)", "format": "time_series", "legendFormat": "In Progress", "refId": "D" },
+        { "datasource": { "type": "prometheus", "uid": "${DS_PX-BACKUP}" }, "expr": "count(pxbackup_backup_status{cluster=~\"$Cluster\", user_id=~\"$UserID\"}==1)", "format": "time_series", "legendFormat": "Pending", "refId": "E" },
+        { "datasource": { "type": "prometheus", "uid": "${DS_PX-BACKUP}" }, "expr": "count(pxbackup_backup_status{cluster=~\"$Cluster\", user_id=~\"$UserID\"}==10)", "format": "time_series", "legendFormat": "Cloud Backup Missing", "refId": "F" },
+        { "datasource": { "type": "prometheus", "uid": "${DS_PX-BACKUP}" }, "expr": "count(pxbackup_backup_status{cluster=~\"$Cluster\", user_id=~\"$UserID\"}==9)", "format": "time_series", "legendFormat": "Delete Pending", "refId": "G" }
+      ],
+      "title": "Current Backup States",
+      "type": "piechart"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${DS_PX-BACKUP}" },
+      "description": "Distribution of current restore states across all restores (pxbackup_restore_status).",
+      "fieldConfig": {
+        "defaults": { "color": { "mode": "palette-classic" }, "mappings": [], "unit": "none" },
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "Failed" }, "properties": [ { "id": "color", "value": { "fixedColor": "red", "mode": "fixed" } } ] },
+          { "matcher": { "id": "byName", "options": "Success" }, "properties": [ { "id": "color", "value": { "fixedColor": "green", "mode": "fixed" } } ] },
+          { "matcher": { "id": "byName", "options": "Partial Success" }, "properties": [ { "id": "color", "value": { "fixedColor": "yellow", "mode": "fixed" } } ] }
+        ]
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 35 },
+      "id": 131,
+      "options": { "legend": { "displayMode": "table", "placement": "right", "showLegend": true, "values": [ "value" ] }, "pieType": "donut", "reduceOptions": { "calcs": [ "lastNotNull" ], "fields": "", "values": false }, "tooltip": { "mode": "single", "sort": "none" } },
+      "pluginVersion": "11.6.0",
+      "targets": [
+        { "datasource": { "type": "prometheus", "uid": "${DS_PX-BACKUP}" }, "expr": "count(pxbackup_restore_status{cluster=~\"$Cluster\", user_id=~\"$UserID\"}==6)", "format": "time_series", "legendFormat": "Success", "refId": "A" },
+        { "datasource": { "type": "prometheus", "uid": "${DS_PX-BACKUP}" }, "expr": "count(pxbackup_restore_status{cluster=~\"$Cluster\", user_id=~\"$UserID\"}==8)", "format": "time_series", "legendFormat": "Partial Success", "refId": "B" },
+        { "datasource": { "type": "prometheus", "uid": "${DS_PX-BACKUP}" }, "expr": "count(pxbackup_restore_status{cluster=~\"$Cluster\", user_id=~\"$UserID\"}==4)", "format": "time_series", "legendFormat": "Failed", "refId": "C" },
+        { "datasource": { "type": "prometheus", "uid": "${DS_PX-BACKUP}" }, "expr": "count(pxbackup_restore_status{cluster=~\"$Cluster\", user_id=~\"$UserID\"}==2)", "format": "time_series", "legendFormat": "In Progress", "refId": "D" },
+        { "datasource": { "type": "prometheus", "uid": "${DS_PX-BACKUP}" }, "expr": "count(pxbackup_restore_status{cluster=~\"$Cluster\", user_id=~\"$UserID\"}==1)", "format": "time_series", "legendFormat": "Pending", "refId": "E" }
+      ],
+      "title": "Current Restore States",
+      "type": "piechart"
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 43 },
+      "id": 5,
+      "panels": [],
+      "title": "Schedule & Policy Health",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${DS_PX-BACKUP}" },
+      "fieldConfig": { "defaults": { "mappings": [], "thresholds": { "mode": "absolute", "steps": [ { "color": "green" } ] }, "unit": "none" }, "overrides": [] },
+      "gridPos": { "h": 4, "w": 4, "x": 0, "y": 44 },
+      "id": 140,
+      "options": { "colorMode": "background", "graphMode": "none", "justifyMode": "auto", "orientation": "horizontal", "reduceOptions": { "calcs": [ "lastNotNull" ], "fields": "", "values": false }, "showPercentChange": false, "textMode": "auto", "wideLayout": true },
+      "pluginVersion": "11.6.0",
+      "targets": [
+        { "datasource": { "type": "prometheus", "uid": "${DS_PX-BACKUP}" }, "expr": "count(pxbackup_backup_schedule_status{user_id=~\"$UserID\"}==0) OR vector(0)", "format": "time_series", "legendFormat": "", "refId": "A" }
+      ],
+      "title": "Active Schedules",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${DS_PX-BACKUP}" },
+      "fieldConfig": { "defaults": { "mappings": [], "thresholds": { "mode": "absolute", "steps": [ { "color": "green" }, { "color": "yellow", "value": 1 } ] }, "unit": "none" }, "overrides": [] },
+      "gridPos": { "h": 4, "w": 4, "x": 4, "y": 44 },
+      "id": 141,
+      "options": { "colorMode": "background", "graphMode": "none", "justifyMode": "auto", "orientation": "horizontal", "reduceOptions": { "calcs": [ "lastNotNull" ], "fields": "", "values": false }, "showPercentChange": false, "textMode": "auto", "wideLayout": true },
+      "pluginVersion": "11.6.0",
+      "targets": [
+        { "datasource": { "type": "prometheus", "uid": "${DS_PX-BACKUP}" }, "expr": "count(pxbackup_backup_schedule_status{user_id=~\"$UserID\"}==1) OR vector(0)", "format": "time_series", "legendFormat": "", "refId": "A" }
+      ],
+      "title": "Suspended Schedules",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${DS_PX-BACKUP}" },
+      "description": "Schedule policy inventory (pxbackup_schedpolicy_metrics).",
+      "fieldConfig": { "defaults": { "custom": { "align": "auto", "filterable": true }, "mappings": [], "thresholds": { "mode": "absolute", "steps": [ { "color": "green" } ] } }, "overrides": [] },
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 48 },
+      "id": 142,
+      "options": { "cellHeight": "sm", "footer": { "countRows": true, "fields": "", "reducer": [ "count" ], "show": true }, "showHeader": true },
+      "pluginVersion": "11.6.0",
+      "targets": [
+        { "datasource": { "type": "prometheus", "uid": "${DS_PX-BACKUP}" }, "expr": "pxbackup_schedpolicy_metrics{user_id=~\"$UserID\"}", "format": "table", "instant": true, "legendFormat": "", "refId": "A" }
+      ],
+      "title": "Schedule Policies",
+      "transformations": [
+        { "id": "organize", "options": { "excludeByName": { "Time": true, "__name__": true, "Value": true, "instance": true, "job": true }, "renameByName": { "name": "Policy", "type": "Type", "user_id": "User" } } }
+      ],
+      "type": "table"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${DS_PX-BACKUP}" },
+      "description": "Volume/resource-only policy inventory (pxbackup_volumeresourceonlypolicy_metrics).",
+      "fieldConfig": { "defaults": { "custom": { "align": "auto", "filterable": true }, "mappings": [], "thresholds": { "mode": "absolute", "steps": [ { "color": "green" } ] } }, "overrides": [] },
+      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 48 },
+      "id": 143,
+      "options": { "cellHeight": "sm", "footer": { "countRows": true, "fields": "", "reducer": [ "count" ], "show": true }, "showHeader": true },
+      "pluginVersion": "11.6.0",
+      "targets": [
+        { "datasource": { "type": "prometheus", "uid": "${DS_PX-BACKUP}" }, "expr": "pxbackup_volumeresourceonlypolicy_metrics{user_id=~\"$UserID\"}", "format": "table", "instant": true, "legendFormat": "", "refId": "A" }
+      ],
+      "title": "Volume/Resource-Only Policies",
+      "transformations": [
+        { "id": "organize", "options": { "excludeByName": { "Time": true, "__name__": true, "Value": true, "instance": true, "job": true }, "renameByName": { "name": "Policy", "type": "Type", "user_id": "User" } } }
+      ],
+      "type": "table"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${DS_PX-BACKUP}" },
+      "description": "Rule inventory (pxbackup_rule_metrics).",
+      "fieldConfig": { "defaults": { "custom": { "align": "auto", "filterable": true }, "mappings": [], "thresholds": { "mode": "absolute", "steps": [ { "color": "green" } ] } }, "overrides": [] },
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 48 },
+      "id": 144,
+      "options": { "cellHeight": "sm", "footer": { "countRows": true, "fields": "", "reducer": [ "count" ], "show": true }, "showHeader": true },
+      "pluginVersion": "11.6.0",
+      "targets": [
+        { "datasource": { "type": "prometheus", "uid": "${DS_PX-BACKUP}" }, "expr": "pxbackup_rule_metrics{user_id=~\"$UserID\"}", "format": "table", "instant": true, "legendFormat": "", "refId": "A" }
+      ],
+      "title": "Rules",
+      "transformations": [
+        { "id": "organize", "options": { "excludeByName": { "Time": true, "__name__": true, "Value": true, "instance": true, "job": true }, "renameByName": { "name": "Rule", "user_id": "User" } } }
+      ],
+      "type": "table"
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 56 },
+      "id": 6,
+      "panels": [],
+      "title": "Credentials",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${DS_PX-BACKUP}" },
+      "fieldConfig": { "defaults": { "mappings": [], "thresholds": { "mode": "absolute", "steps": [ { "color": "blue" } ] }, "unit": "none" }, "overrides": [] },
+      "gridPos": { "h": 8, "w": 6, "x": 0, "y": 57 },
+      "id": 150,
+      "options": { "colorMode": "background", "graphMode": "none", "justifyMode": "auto", "orientation": "horizontal", "reduceOptions": { "calcs": [ "lastNotNull" ], "fields": "", "values": false }, "showPercentChange": false, "textMode": "auto", "wideLayout": true },
+      "pluginVersion": "11.6.0",
+      "targets": [
+        { "datasource": { "type": "prometheus", "uid": "${DS_PX-BACKUP}" }, "expr": "count(pxbackup_cloudcred_metrics{user_id=~\"$UserID\"}) OR vector(0)", "format": "time_series", "legendFormat": "", "refId": "A" }
+      ],
+      "title": "Total Cloud Credentials",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${DS_PX-BACKUP}" },
+      "description": "Credentials by provider type (pxbackup_cloudcred_metrics value: 1=AWS, 2=Azure, 3=Google, 4=IBM, 5=Rancher).",
+      "fieldConfig": { "defaults": { "color": { "mode": "palette-classic" }, "mappings": [], "unit": "none" }, "overrides": [] },
+      "gridPos": { "h": 8, "w": 12, "x": 6, "y": 57 },
+      "id": 151,
+      "options": { "legend": { "displayMode": "table", "placement": "right", "showLegend": true, "values": [ "value" ] }, "pieType": "donut", "reduceOptions": { "calcs": [ "lastNotNull" ], "fields": "", "values": false }, "tooltip": { "mode": "single", "sort": "none" } },
+      "pluginVersion": "11.6.0",
+      "targets": [
+        { "datasource": { "type": "prometheus", "uid": "${DS_PX-BACKUP}" }, "expr": "count(pxbackup_cloudcred_metrics{user_id=~\"$UserID\"}==1)", "format": "time_series", "legendFormat": "AWS", "refId": "A" },
+        { "datasource": { "type": "prometheus", "uid": "${DS_PX-BACKUP}" }, "expr": "count(pxbackup_cloudcred_metrics{user_id=~\"$UserID\"}==2)", "format": "time_series", "legendFormat": "Azure", "refId": "B" },
+        { "datasource": { "type": "prometheus", "uid": "${DS_PX-BACKUP}" }, "expr": "count(pxbackup_cloudcred_metrics{user_id=~\"$UserID\"}==3)", "format": "time_series", "legendFormat": "Google", "refId": "C" },
+        { "datasource": { "type": "prometheus", "uid": "${DS_PX-BACKUP}" }, "expr": "count(pxbackup_cloudcred_metrics{user_id=~\"$UserID\"}==4)", "format": "time_series", "legendFormat": "IBM", "refId": "D" },
+        { "datasource": { "type": "prometheus", "uid": "${DS_PX-BACKUP}" }, "expr": "count(pxbackup_cloudcred_metrics{user_id=~\"$UserID\"}==5)", "format": "time_series", "legendFormat": "Rancher", "refId": "E" }
+      ],
+      "title": "Credentials by Provider",
+      "type": "piechart"
+    },
+    {
+      "collapsed": true,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 65 },
+      "id": 7,
+      "panels": [
+        {
+          "datasource": { "type": "prometheus", "uid": "${DS_PX-BACKUP}" },
+          "gridPos": { "h": 6, "w": 24, "x": 0, "y": 66 },
+          "id": 160,
+          "options": { "code": { "language": "plaintext", "showLineNumbers": false, "showMiniMap": false }, "content": "## Federated Operations (optional)\n\nPortworx Backup Federated mode exposes additional discovery / Gardener metrics that are **not part of the on-prem `px-backup-metrics` reference** used to build this dashboard.\n\nIf your environment runs Federated mode and surfaces those metrics in Prometheus, add panels here. Note that **VM/KubeVirt backups are documented as Classic-mode only**; Federated mode supports application namespace backups.\n\nThis row is intentionally left as a placeholder so the section is discoverable without breaking import for Classic-mode users.", "mode": "markdown" },
+          "pluginVersion": "11.6.0",
+          "title": "Federated Operations",
+          "type": "text"
+        }
+      ],
+      "title": "Federated Operations (optional)",
+      "type": "row"
+    }
+  ],
+  "refresh": "30s",
+  "schemaVersion": 41,
+  "tags": [ "portworx-backup", "pxbackup", "global" ],
+  "templating": {
+    "list": [
+      {
+        "allValue": ".*",
+        "current": {},
+        "datasource": { "type": "prometheus", "uid": "${DS_PX-BACKUP}" },
+        "definition": "pxbackup_cluster_status",
+        "includeAll": true,
+        "label": "UserID",
+        "multi": true,
+        "name": "UserID",
+        "options": [],
+        "query": "pxbackup_cluster_status",
+        "refresh": 1,
+        "regex": "/.*user_id=\"([^\"]*).*/",
+        "type": "query"
+      },
+      {
+        "allValue": ".*",
+        "current": {},
+        "datasource": { "type": "prometheus", "uid": "${DS_PX-BACKUP}" },
+        "definition": "pxbackup_cluster_status{user_id=~\"$UserID\"}",
+        "includeAll": true,
+        "label": "Cluster",
+        "multi": true,
+        "name": "Cluster",
+        "options": [],
+        "query": "pxbackup_cluster_status{user_id=~\"$UserID\"}",
+        "refresh": 1,
+        "regex": "/.*name=\"([^\"]*).*/",
+        "type": "query"
+      }
+    ]
+  },
+  "time": { "from": "now-24h", "to": "now" },
+  "timepicker": {},
+  "timezone": "",
+  "title": "Portworx Backup - Global Operations Overview",
+  "uid": "pxb-global-ops",
+  "version": 1,
+  "weekStart": ""
+}
