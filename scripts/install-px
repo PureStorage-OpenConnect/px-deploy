@@ -176,6 +176,21 @@ if [ $platform = k8s ]; then
   kubectl -n portworx apply -f /assets/grafana/node-exporter-svc.yaml
   kubectl -n portworx apply -f /assets/grafana/node-exporter-servicemonitor.yaml
   kubectl -n portworx apply -f /assets/grafana/grafana.yaml
+  grafanaHost=$(kubectl get svc grafana -n portworx -o json | jq -r ".status.loadBalancer.ingress[0].hostname")
+  
+  # only wait once 5sec for LB hostname; do not block deployment (other clouds than AWS wont have a hostname)
+  if [ $grafanaHost = "null" ]; then
+    echo "Waiting 5sec for Grafana LB"
+    sleep 5
+    grafanaHost=$(kubectl get svc grafana -n portworx -o json | jq -r ".status.loadBalancer.ingress[0].hostname")
+  fi
+  
+  # if there is no hostname show hint
+  if [ $grafanaHost = "null" ]; then
+    grafanaHost="[check grafana svc in px namespace]"
+  fi
+  grafanaHost="$grafanaHost:3000"
+
 elif [ $platform = ocp4 ]; then
   oc apply -n portworx -f /assets/grafana/grafana-service-account.yaml
   oc -n portworx adm policy add-cluster-role-to-user cluster-monitoring-view -z grafana
@@ -186,6 +201,7 @@ elif [ $platform = ocp4 ]; then
   oc -n portworx create configmap grafana-source-config --from-file=/assets/grafana/grafana-datasource-ocp.yaml
   oc -n portworx apply -f /assets/grafana/grafana-ocp.yaml
   oc expose service grafana -n portworx
+  grafanaHost=$(oc get route -n portworx -ojson | jq -r ".items[0].spec.host")
 fi
 
 # install storkctl
@@ -198,18 +214,10 @@ done
 chmod +x /usr/local/bin/storkctl
 storkctl completion bash >/etc/bash_completion.d/storkctl
 
-grafanaIP=$(kubectl get svc grafana -n portworx -o json | jq -r ".status.loadBalancer.ingress[0].hostname")
- 
-while [ $grafanaIP = "null" ]; do
-  sleep 2
-  echo "PX grafana LB not assigned"
-  grafanaIP=$(kubectl get svc grafana -n portworx -o json | jq -r ".status.loadBalancer.ingress[0].hostname")
-done
-echo "PX grafana LB assigned: $grafanaIP"
-
+echo "PX grafana LB assigned: $grafanaHost"
 cat <<EOF >> /etc/motd
 +================================================+
-Portworx Grafana User Interface Access URL : http://$grafanaIP:3000
+Portworx Grafana User Interface Access URL : http://$grafanaHost
 Portworx Grafana admin user name: admin
 Portworx Grafana admin user password: $GRAFANA_ADMIN_PW
 +================================================+

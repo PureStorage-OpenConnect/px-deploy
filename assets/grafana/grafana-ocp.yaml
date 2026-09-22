@@ -49,6 +49,12 @@ spec:
               mountPath: /var/lib/grafana/dashboards
             - name: grafana-source-config
               mountPath: /etc/grafana/provisioning/datasources
+          env:
+            - name: GF_SECURITY_ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: grafana-admin-secret
+                  key: admin-password
       serviceAccountName: grafana
       volumes:
         - name: grafana-source-config

@@ -59,7 +59,7 @@ if [ "$platform" = ocp4 ]; then
   authIP=$(kubectl get route px-central-ui -n central -o json |jq -r ".status.ingress[0].host")
   authPort=80
   PXB_URL=$(kubectl get route px-backup-ui -n central -o json |jq -r ".status.ingress[0].host")
-
+  PROMETHEUS_UID="P1809F7CD0C75ACF3"  
 else  # platform is k8s on aws
   IMDSTOKEN=$(curl -s -X PUT 'http://169.254.169.254/latest/api/token' -H 'X-aws-ec2-metadata-token-ttl-seconds: 120')
   backupIP=$(curl -H "X-aws-ec2-metadata-token: $IMDSTOKEN" -s http://169.254.169.254/latest/meta-data/public-ipv4)
@@ -74,21 +74,19 @@ else  # platform is k8s on aws
   sed -i "s/<PXB_PROMETHEUS_PASSWORD>/$PXB_PROMETHEUS_PW/" /assets/grafana/grafana-datasource.yaml
   kubectl -n portworx delete configmap grafana-source-config
   kubectl -n portworx create configmap grafana-source-config --from-file=/assets/grafana/grafana-datasource.yaml
-  
-  sed -i "s/\${DS_PX-BACKUP}/P2A6756613D5CF575/" /assets/helm-backup/grafana-global-operations.json
-  sed -i "s/\${DS_PX-BACKUP}/P2A6756613D5CF575/" /assets/helm-backup/grafana-kubevirt.json
-  sed -i "s/\${DS_PX-BACKUP}/P2A6756613D5CF575/" /assets/helm-backup/grafana-namespace.json
-
-  kubectl patch cm grafana-dashboards  -n portworx --type=merge -p "{\"data\":{\"grafana-global-operations.json\":$(jq -Rs . < /assets/helm-backup/grafana-global-operations.json)}}"
-  kubectl patch cm grafana-dashboards  -n portworx --type=merge -p "{\"data\":{\"grafana-kubevirt.json\":$(jq -Rs . < /assets/helm-backup/grafana-kubevirt.json)}}"
-  kubectl patch cm grafana-dashboards  -n portworx --type=merge -p "{\"data\":{\"grafana-namespace.json\":$(jq -Rs . < /assets/helm-backup/grafana-namespace.json)}}"
-  
-  kubectl -n portworx delete pod -l app=grafana
-  # OCP exceptions
+  PROMETHEUS_UID="P2A6756613D5CF575"  
 fi
 
+sed -i "s/\${DS_PX-BACKUP}/$PROMETHEUS_UID/" /assets/helm-backup/grafana-global-operations.json
+sed -i "s/\${DS_PX-BACKUP}/$PROMETHEUS_UID/" /assets/helm-backup/grafana-kubevirt.json
+sed -i "s/\${DS_PX-BACKUP}/$PROMETHEUS_UID/" /assets/helm-backup/grafana-namespace.json
+
+kubectl patch cm grafana-dashboards  -n portworx --type=merge -p "{\"data\":{\"grafana-global-operations.json\":$(jq -Rs . < /assets/helm-backup/grafana-global-operations.json)}}"
+kubectl patch cm grafana-dashboards  -n portworx --type=merge -p "{\"data\":{\"grafana-kubevirt.json\":$(jq -Rs . < /assets/helm-backup/grafana-kubevirt.json)}}"
+kubectl patch cm grafana-dashboards  -n portworx --type=merge -p "{\"data\":{\"grafana-namespace.json\":$(jq -Rs . < /assets/helm-backup/grafana-namespace.json)}}"
+kubectl -n portworx delete pod -l app=grafana
+
 px pxb init config  --px-backup-api-url http://$backupIP:$backupPort --pxcentral-auth-url http://$authIP:$authPort
-px pxb set config --pxcentral-verify-ssl false
 px pxb login --username admin --password $ADMIN_PW
 
 while ! px pxb version; do
