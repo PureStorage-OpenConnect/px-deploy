@@ -1,0 +1,489 @@
+{
+  "__inputs": [
+    {
+      "name": "DS_PX-BACKUP",
+      "label": "px-backup",
+      "description": "Prometheus data source scraping Portworx Backup metrics",
+      "type": "datasource",
+      "pluginId": "prometheus",
+      "pluginName": "Prometheus"
+    }
+  ],
+  "__elements": {},
+  "__requires": [
+    { "type": "grafana", "id": "grafana", "name": "Grafana", "version": "11.6.0" },
+    { "type": "datasource", "id": "prometheus", "name": "Prometheus", "version": "1.0.0" },
+    { "type": "panel", "id": "stat", "name": "Stat", "version": "" },
+    { "type": "panel", "id": "timeseries", "name": "Time series", "version": "" },
+    { "type": "panel", "id": "table", "name": "Table", "version": "" },
+    { "type": "panel", "id": "piechart", "name": "Pie chart", "version": "" },
+    { "type": "panel", "id": "barchart", "name": "Bar chart", "version": "" }
+  ],
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": { "type": "datasource", "uid": "grafana" },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "description": "Portworx Backup Namespace / Application protection: app backups, namespaces, Kubernetes resource types, PVCs/volumes, retention governance and failure drilldowns.",
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "id": null,
+  "links": [],
+  "panels": [
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 },
+      "id": 1,
+      "panels": [],
+      "title": "App Backup Summary",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${DS_PX-BACKUP}" },
+      "fieldConfig": { "defaults": { "mappings": [], "thresholds": { "mode": "absolute", "steps": [ { "color": "blue" } ] }, "unit": "none" }, "overrides": [] },
+      "gridPos": { "h": 4, "w": 6, "x": 0, "y": 1 },
+      "id": 200,
+      "options": { "colorMode": "background", "graphMode": "none", "justifyMode": "auto", "orientation": "horizontal", "reduceOptions": { "calcs": [ "lastNotNull" ], "fields": "", "values": false }, "showPercentChange": false, "textMode": "auto", "wideLayout": true },
+      "pluginVersion": "11.6.0",
+      "targets": [
+        { "datasource": { "type": "prometheus", "uid": "${DS_PX-BACKUP}" }, "expr": "count(pxbackup_backup_object_info{cluster_name=~\"$Cluster\", org_id=~\"$OrgID\", backup_object_type=\"All\"}) OR vector(0)", "format": "time_series", "legendFormat": "", "refId": "A" }
+      ],
+      "title": "Total App Backups",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${DS_PX-BACKUP}" },
+      "fieldConfig": { "defaults": { "mappings": [], "thresholds": { "mode": "absolute", "steps": [ { "color": "green" }, { "color": "red", "value": 1 } ] }, "unit": "none" }, "overrides": [] },
+      "gridPos": { "h": 4, "w": 6, "x": 6, "y": 1 },
+      "id": 201,
+      "options": { "colorMode": "background", "graphMode": "none", "justifyMode": "auto", "orientation": "horizontal", "reduceOptions": { "calcs": [ "lastNotNull" ], "fields": "", "values": false }, "showPercentChange": false, "textMode": "auto", "wideLayout": true },
+      "pluginVersion": "11.6.0",
+      "targets": [
+        { "datasource": { "type": "prometheus", "uid": "${DS_PX-BACKUP}" }, "expr": "count(pxbackup_backup_object_info{cluster_name=~\"$Cluster\", org_id=~\"$OrgID\", backup_object_type=\"All\", status=\"Failed\"}) OR vector(0)", "format": "time_series", "legendFormat": "", "refId": "A" }
+      ],
+      "title": "Failed",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${DS_PX-BACKUP}" },
+      "fieldConfig": { "defaults": { "mappings": [], "thresholds": { "mode": "absolute", "steps": [ { "color": "green" }, { "color": "yellow", "value": 1 } ] }, "unit": "none" }, "overrides": [] },
+      "gridPos": { "h": 4, "w": 6, "x": 12, "y": 1 },
+      "id": 202,
+      "options": { "colorMode": "background", "graphMode": "none", "justifyMode": "auto", "orientation": "horizontal", "reduceOptions": { "calcs": [ "lastNotNull" ], "fields": "", "values": false }, "showPercentChange": false, "textMode": "auto", "wideLayout": true },
+      "pluginVersion": "11.6.0",
+      "targets": [
+        { "datasource": { "type": "prometheus", "uid": "${DS_PX-BACKUP}" }, "expr": "count(pxbackup_backup_object_info{cluster_name=~\"$Cluster\", org_id=~\"$OrgID\", backup_object_type=\"All\", status=\"PartialSuccess\"}) OR vector(0)", "format": "time_series", "legendFormat": "", "refId": "A" }
+      ],
+      "title": "Partial Success",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${DS_PX-BACKUP}" },
+      "fieldConfig": { "defaults": { "mappings": [], "thresholds": { "mode": "absolute", "steps": [ { "color": "green" }, { "color": "yellow", "value": 1 } ] }, "unit": "none" }, "overrides": [] },
+      "gridPos": { "h": 4, "w": 6, "x": 18, "y": 1 },
+      "id": 203,
+      "options": { "colorMode": "background", "graphMode": "none", "justifyMode": "auto", "orientation": "horizontal", "reduceOptions": { "calcs": [ "lastNotNull" ], "fields": "", "values": false }, "showPercentChange": false, "textMode": "auto", "wideLayout": true },
+      "pluginVersion": "11.6.0",
+      "targets": [
+        { "datasource": { "type": "prometheus", "uid": "${DS_PX-BACKUP}" }, "expr": "count(pxbackup_backup_object_info{cluster_name=~\"$Cluster\", org_id=~\"$OrgID\", backup_object_type=\"All\", status=~\"Deleting|DeletePending\"}) OR vector(0)", "format": "time_series", "legendFormat": "", "refId": "A" }
+      ],
+      "title": "Deleting / Delete Pending",
+      "type": "stat"
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 5 },
+      "id": 2,
+      "panels": [],
+      "title": "Operation Trends",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${DS_PX-BACKUP}" },
+      "description": "Backup operation rate by status (pxbackup_backup_count is fleet-wide; it is not split by backup_object_type).",
+      "fieldConfig": {
+        "defaults": { "color": { "mode": "palette-classic" }, "custom": { "axisBorderShow": false, "axisCenteredZero": false, "axisColorMode": "text", "axisLabel": "", "axisPlacement": "auto", "barAlignment": 0, "drawStyle": "line", "fillOpacity": 25, "gradientMode": "none", "hideFrom": { "legend": false, "tooltip": false, "viz": false }, "insertNulls": false, "lineInterpolation": "linear", "lineWidth": 1, "pointSize": 5, "scaleDistribution": { "type": "linear" }, "showPoints": "never", "spanNulls": false, "stacking": { "group": "A", "mode": "normal" }, "thresholdsStyle": { "mode": "off" } }, "mappings": [], "min": 0, "thresholds": { "mode": "absolute", "steps": [ { "color": "green" } ] }, "unit": "short" },
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "Failed" }, "properties": [ { "id": "color", "value": { "fixedColor": "red", "mode": "fixed" } } ] },
+          { "matcher": { "id": "byName", "options": "Success" }, "properties": [ { "id": "color", "value": { "fixedColor": "green", "mode": "fixed" } } ] }
+        ]
+      },
+      "gridPos": { "h": 8, "w": 10, "x": 0, "y": 6 },
+      "id": 210,
+      "options": { "legend": { "calcs": [], "displayMode": "list", "placement": "bottom", "showLegend": true }, "tooltip": { "hideZeros": false, "mode": "multi", "sort": "desc" } },
+      "pluginVersion": "11.6.0",
+      "targets": [
+        { "datasource": { "type": "prometheus", "uid": "${DS_PX-BACKUP}" }, "expr": "sum by (status) (increase(pxbackup_backup_count{user_id=~\"$UserID\", cluster_name=~\"$Cluster\", org_id=~\"$OrgID\"}[$__rate_interval]))", "format": "time_series", "legendFormat": "{{status}}", "refId": "A" }
+      ],
+      "title": "Backup Operations Trend",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${DS_PX-BACKUP}" },
+      "description": "Restore operation rate by status (pxbackup_restore_count).",
+      "fieldConfig": {
+        "defaults": { "color": { "mode": "palette-classic" }, "custom": { "axisBorderShow": false, "axisCenteredZero": false, "axisColorMode": "text", "axisLabel": "", "axisPlacement": "auto", "barAlignment": 0, "drawStyle": "line", "fillOpacity": 25, "gradientMode": "none", "hideFrom": { "legend": false, "tooltip": false, "viz": false }, "insertNulls": false, "lineInterpolation": "linear", "lineWidth": 1, "pointSize": 5, "scaleDistribution": { "type": "linear" }, "showPoints": "never", "spanNulls": false, "stacking": { "group": "A", "mode": "normal" }, "thresholdsStyle": { "mode": "off" } }, "mappings": [], "min": 0, "thresholds": { "mode": "absolute", "steps": [ { "color": "green" } ] }, "unit": "short" },
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "Failed" }, "properties": [ { "id": "color", "value": { "fixedColor": "red", "mode": "fixed" } } ] },
+          { "matcher": { "id": "byName", "options": "Success" }, "properties": [ { "id": "color", "value": { "fixedColor": "green", "mode": "fixed" } } ] }
+        ]
+      },
+      "gridPos": { "h": 8, "w": 10, "x": 10, "y": 6 },
+      "id": 211,
+      "options": { "legend": { "calcs": [], "displayMode": "list", "placement": "bottom", "showLegend": true }, "tooltip": { "hideZeros": false, "mode": "multi", "sort": "desc" } },
+      "pluginVersion": "11.6.0",
+      "targets": [
+        { "datasource": { "type": "prometheus", "uid": "${DS_PX-BACKUP}" }, "expr": "sum by (status) (increase(pxbackup_restore_count{user_id=~\"$UserID\", cluster=~\"$Cluster\", org_id=~\"$OrgID\"}[$__rate_interval]))", "format": "time_series", "legendFormat": "{{status}}", "refId": "A" }
+      ],
+      "title": "Restore Operations Trend",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${DS_PX-BACKUP}" },
+      "fieldConfig": { "defaults": { "decimals": 0, "mappings": [], "thresholds": { "mode": "absolute", "steps": [ { "color": "red" }, { "color": "yellow", "value": 50 }, { "color": "green", "value": 90 } ] }, "unit": "percent" }, "overrides": [] },
+      "gridPos": { "h": 8, "w": 4, "x": 20, "y": 6 },
+      "id": 212,
+      "options": { "colorMode": "background", "graphMode": "none", "justifyMode": "auto", "orientation": "horizontal", "reduceOptions": { "calcs": [ "lastNotNull" ], "fields": "", "values": false }, "showPercentChange": false, "textMode": "auto", "wideLayout": true },
+      "pluginVersion": "11.6.0",
+      "targets": [
+        { "datasource": { "type": "prometheus", "uid": "${DS_PX-BACKUP}" }, "expr": "100*count(pxbackup_restore_status{cluster=~\"$Cluster\", user_id=~\"$UserID\"}==6)/count(pxbackup_restore_status{cluster=~\"$Cluster\", user_id=~\"$UserID\"})", "format": "time_series", "legendFormat": "", "refId": "A" }
+      ],
+      "title": "Restore Success Rate",
+      "type": "stat"
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 14 },
+      "id": 3,
+      "panels": [],
+      "title": "Backup Inventory",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${DS_PX-BACKUP}" },
+      "description": "All application backups (backup_object_type=All). Use the variables above to filter.",
+      "fieldConfig": {
+        "defaults": { "custom": { "align": "auto", "filterable": true }, "mappings": [], "thresholds": { "mode": "absolute", "steps": [ { "color": "green" } ] } },
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "Status" }, "properties": [ { "id": "custom.cellOptions", "value": { "type": "color-text" } }, { "id": "mappings", "value": [ { "type": "value", "options": { "Success": { "color": "green", "index": 0 }, "Failed": { "color": "red", "index": 1 }, "PartialSuccess": { "color": "yellow", "index": 2 } } } ] } ] }
+        ]
+      },
+      "gridPos": { "h": 9, "w": 24, "x": 0, "y": 15 },
+      "id": 220,
+      "options": { "cellHeight": "sm", "footer": { "countRows": true, "fields": "", "reducer": [ "count" ], "show": true }, "showHeader": true },
+      "pluginVersion": "11.6.0",
+      "targets": [
+        { "datasource": { "type": "prometheus", "uid": "${DS_PX-BACKUP}" }, "expr": "pxbackup_backup_object_info{cluster_name=~\"$Cluster\", org_id=~\"$OrgID\", backup_object_type=\"All\", name=~\"$BackupName\", backup_location_name=~\"$BackupLocation\", schedule_policy_name=~\"$SchedulePolicy\", backup_type=~\"$BackupType\"}", "format": "table", "instant": true, "legendFormat": "", "refId": "A" }
+      ],
+      "title": "Application Backup Inventory",
+      "transformations": [
+        { "id": "organize", "options": {
+          "excludeByName": { "Time": true, "__name__": true, "Value": true, "instance": true, "job": true, "uid": true, "backup_schedule_uid": true, "backup_location_uid": true, "cloud_credential_uid": true, "cluster_uid": true, "schedule_policy_uid": true, "volume_resource_only_policy_uid": true, "backup_path": true, "label_selectors": true, "ns_label_selectors": true, "advanced_resource_label_selector": true, "create_time_in_sec": true, "volumes_completion_time": true, "resources_completion_time": true, "total_completion_time": true, "backup_id_list": true, "previous_backup_id_list": true, "previous_status": true, "previous_volume_count": true, "previous_total_size": true, "cluster": true, "backup_object_type": true, "org_id": true },
+          "renameByName": { "name": "Backup", "namespaces": "Namespaces", "backup_schedule_name": "Schedule", "schedule_policy_name": "Policy", "status": "Status", "status_reason": "Reason", "backup_location_name": "Location", "cloud_credential_name": "Credential", "backup_type": "Type", "retention_period": "Retention", "total_size": "Total Size", "resource_count": "Resources", "volume_count": "Volumes", "cluster_name": "Cluster" }
+        } }
+      ],
+      "type": "table"
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 24 },
+      "id": 4,
+      "panels": [],
+      "title": "Backup Composition",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${DS_PX-BACKUP}" },
+      "description": "Scheduled (backup_schedule_name set) vs manual (empty) application backups.",
+      "fieldConfig": { "defaults": { "color": { "mode": "palette-classic" }, "mappings": [], "unit": "none" }, "overrides": [] },
+      "gridPos": { "h": 7, "w": 12, "x": 0, "y": 25 },
+      "id": 230,
+      "options": { "legend": { "displayMode": "table", "placement": "right", "showLegend": true, "values": [ "value" ] }, "pieType": "pie", "reduceOptions": { "calcs": [ "lastNotNull" ], "fields": "", "values": false }, "tooltip": { "mode": "single", "sort": "none" } },
+      "pluginVersion": "11.6.0",
+      "targets": [
+        { "datasource": { "type": "prometheus", "uid": "${DS_PX-BACKUP}" }, "expr": "count(pxbackup_backup_object_info{cluster_name=~\"$Cluster\", org_id=~\"$OrgID\", backup_object_type=\"All\", backup_schedule_name!=\"\"})", "format": "time_series", "legendFormat": "Scheduled", "refId": "A" },
+        { "datasource": { "type": "prometheus", "uid": "${DS_PX-BACKUP}" }, "expr": "count(pxbackup_backup_object_info{cluster_name=~\"$Cluster\", org_id=~\"$OrgID\", backup_object_type=\"All\", backup_schedule_name=\"\"})", "format": "time_series", "legendFormat": "Manual", "refId": "B" }
+      ],
+      "title": "Scheduled vs Manual",
+      "type": "piechart"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${DS_PX-BACKUP}" },
+      "description": "Backup type mix (pxbackup_backup_object_info backup_type label).",
+      "fieldConfig": { "defaults": { "color": { "mode": "palette-classic" }, "mappings": [], "unit": "none" }, "overrides": [] },
+      "gridPos": { "h": 7, "w": 12, "x": 12, "y": 25 },
+      "id": 231,
+      "options": { "legend": { "displayMode": "table", "placement": "right", "showLegend": true, "values": [ "value" ] }, "pieType": "donut", "reduceOptions": { "calcs": [ "lastNotNull" ], "fields": "", "values": false }, "tooltip": { "mode": "single", "sort": "none" } },
+      "pluginVersion": "11.6.0",
+      "targets": [
+        { "datasource": { "type": "prometheus", "uid": "${DS_PX-BACKUP}" }, "expr": "count by (backup_type) (pxbackup_backup_object_info{cluster_name=~\"$Cluster\", org_id=~\"$OrgID\", backup_object_type=\"All\"})", "format": "time_series", "legendFormat": "{{backup_type}}", "refId": "A" }
+      ],
+      "title": "Backup Type Mix",
+      "type": "piechart"
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 32 },
+      "id": 5,
+      "panels": [],
+      "title": "Namespace Health",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${DS_PX-BACKUP}" },
+      "description": "Per-namespace protection status for the selected backup(s). The 'name' label holds the namespace.",
+      "fieldConfig": {
+        "defaults": { "custom": { "align": "auto", "filterable": true }, "mappings": [], "thresholds": { "mode": "absolute", "steps": [ { "color": "green" } ] } },
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "Status" }, "properties": [ { "id": "custom.cellOptions", "value": { "type": "color-text" } }, { "id": "mappings", "value": [ { "type": "value", "options": { "Success": { "color": "green", "index": 0 }, "Failed": { "color": "red", "index": 1 }, "PartialSuccess": { "color": "yellow", "index": 2 } } } ] } ] }
+        ]
+      },
+      "gridPos": { "h": 8, "w": 16, "x": 0, "y": 33 },
+      "id": 240,
+      "options": { "cellHeight": "sm", "footer": { "countRows": true, "fields": "", "reducer": [ "count" ], "show": true }, "showHeader": true },
+      "pluginVersion": "11.6.0",
+      "targets": [
+        { "datasource": { "type": "prometheus", "uid": "${DS_PX-BACKUP}" }, "expr": "pxbackup_namespace_resource_info{backup_name=~\"$BackupName\"}", "format": "table", "instant": true, "legendFormat": "", "refId": "A" }
+      ],
+      "title": "Namespace Health",
+      "transformations": [
+        { "id": "organize", "options": { "excludeByName": { "Time": true, "__name__": true, "Value": true, "instance": true, "job": true, "backup_id": true, "create_time_in_sec": true }, "renameByName": { "name": "Namespace", "backup_name": "Backup", "status": "Status", "status_reason": "Reason", "total_resources": "Resources", "total_volumes": "Volumes", "total_failed_resources": "Failed Resources", "total_failed_volumes": "Failed Volumes" } } }
+      ],
+      "type": "table"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${DS_PX-BACKUP}" },
+      "description": "Namespace status distribution for the selected backup(s).",
+      "fieldConfig": {
+        "defaults": { "color": { "mode": "palette-classic" }, "mappings": [], "unit": "none" },
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "Failed" }, "properties": [ { "id": "color", "value": { "fixedColor": "red", "mode": "fixed" } } ] },
+          { "matcher": { "id": "byName", "options": "Success" }, "properties": [ { "id": "color", "value": { "fixedColor": "green", "mode": "fixed" } } ] },
+          { "matcher": { "id": "byName", "options": "PartialSuccess" }, "properties": [ { "id": "color", "value": { "fixedColor": "yellow", "mode": "fixed" } } ] }
+        ]
+      },
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 33 },
+      "id": 241,
+      "options": { "legend": { "displayMode": "table", "placement": "bottom", "showLegend": true, "values": [ "value" ] }, "pieType": "donut", "reduceOptions": { "calcs": [ "lastNotNull" ], "fields": "", "values": false }, "tooltip": { "mode": "single", "sort": "none" } },
+      "pluginVersion": "11.6.0",
+      "targets": [
+        { "datasource": { "type": "prometheus", "uid": "${DS_PX-BACKUP}" }, "expr": "count by (status) (pxbackup_namespace_resource_info{backup_name=~\"$BackupName\"})", "format": "time_series", "legendFormat": "{{status}}", "refId": "A" }
+      ],
+      "title": "Namespace Status Distribution",
+      "type": "piechart"
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 41 },
+      "id": 6,
+      "panels": [],
+      "title": "Kubernetes Resource Types",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${DS_PX-BACKUP}" },
+      "description": "Resource-type breakdown per namespace for the selected backup(s). The 'name' label holds the resource type.",
+      "fieldConfig": {
+        "defaults": { "custom": { "align": "auto", "filterable": true }, "mappings": [], "thresholds": { "mode": "absolute", "steps": [ { "color": "green" } ] } },
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "Failed Resources" }, "properties": [ { "id": "custom.cellOptions", "value": { "type": "color-background", "mode": "gradient" } }, { "id": "thresholds", "value": { "mode": "absolute", "steps": [ { "color": "green" }, { "color": "red", "value": 1 } ] } } ] }
+        ]
+      },
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 42 },
+      "id": 250,
+      "options": { "cellHeight": "sm", "footer": { "countRows": false, "fields": "", "reducer": [ "sum" ], "show": false }, "showHeader": true },
+      "pluginVersion": "11.6.0",
+      "targets": [
+        { "datasource": { "type": "prometheus", "uid": "${DS_PX-BACKUP}" }, "expr": "pxbackup_namespace_resource_type_info{backup_name=~\"$BackupName\", namespace=~\"$Namespace\"}", "format": "table", "instant": true, "legendFormat": "", "refId": "A" }
+      ],
+      "title": "Resource-Type Breakdown",
+      "transformations": [
+        { "id": "organize", "options": { "excludeByName": { "Time": true, "__name__": true, "Value": true, "instance": true, "job": true, "backup_id": true }, "renameByName": { "namespace": "Namespace", "name": "Resource Type", "backup_name": "Backup", "total_resources": "Resources", "total_failed_resources": "Failed Resources" } } }
+      ],
+      "type": "table"
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 50 },
+      "id": 7,
+      "panels": [],
+      "title": "PVC / Volume Health",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${DS_PX-BACKUP}" },
+      "description": "Application PVC/volume backups (virtual_machine_name empty = non-VM volumes).",
+      "fieldConfig": {
+        "defaults": { "custom": { "align": "auto", "filterable": true }, "mappings": [], "thresholds": { "mode": "absolute", "steps": [ { "color": "green" } ] } },
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "Status" }, "properties": [ { "id": "custom.cellOptions", "value": { "type": "color-text" } }, { "id": "mappings", "value": [ { "type": "value", "options": { "Success": { "color": "green", "index": 0 }, "Failed": { "color": "red", "index": 1 }, "PartialSuccess": { "color": "yellow", "index": 2 } } } ] } ] }
+        ]
+      },
+      "gridPos": { "h": 9, "w": 24, "x": 0, "y": 51 },
+      "id": 260,
+      "options": { "cellHeight": "sm", "footer": { "countRows": true, "fields": "", "reducer": [ "count" ], "show": true }, "showHeader": true },
+      "pluginVersion": "11.6.0",
+      "targets": [
+        { "datasource": { "type": "prometheus", "uid": "${DS_PX-BACKUP}" }, "expr": "pxbackup_backup_volume_info{backup_name=~\"$BackupName\", namespace=~\"$Namespace\", storage_class=~\"$StorageClass\", provisioner=~\"$Provisioner\", virtual_machine_name=\"\"}", "format": "table", "instant": true, "legendFormat": "", "refId": "A" }
+      ],
+      "title": "PVC / Volume Health",
+      "transformations": [
+        { "id": "organize", "options": { "excludeByName": { "Time": true, "__name__": true, "Value": true, "instance": true, "job": true, "backup_id": true, "pvc_id": true, "name": true, "driver_name": true, "virtual_machine_name": true }, "renameByName": { "pvc": "PVC", "namespace": "Namespace", "backup_name": "Backup", "status": "Status", "storage_class": "Storage Class", "provisioner": "Provisioner", "volume_snapshot": "Snapshot", "total_size": "Total Size", "actual_size": "Actual Size", "backup_mode": "Backup Mode" } } }
+      ],
+      "type": "table"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${DS_PX-BACKUP}" },
+      "description": "Full vs incremental volume backups (backup_mode).",
+      "fieldConfig": { "defaults": { "color": { "mode": "palette-classic" }, "mappings": [], "unit": "none" }, "overrides": [] },
+      "gridPos": { "h": 7, "w": 12, "x": 0, "y": 60 },
+      "id": 261,
+      "options": { "legend": { "displayMode": "table", "placement": "right", "showLegend": true, "values": [ "value" ] }, "pieType": "donut", "reduceOptions": { "calcs": [ "lastNotNull" ], "fields": "", "values": false }, "tooltip": { "mode": "single", "sort": "none" } },
+      "pluginVersion": "11.6.0",
+      "targets": [
+        { "datasource": { "type": "prometheus", "uid": "${DS_PX-BACKUP}" }, "expr": "count by (backup_mode) (pxbackup_backup_volume_info{backup_name=~\"$BackupName\", namespace=~\"$Namespace\", virtual_machine_name=\"\"})", "format": "time_series", "legendFormat": "{{backup_mode}}", "refId": "A" }
+      ],
+      "title": "Full vs Incremental Volumes",
+      "type": "piechart"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${DS_PX-BACKUP}" },
+      "description": "Volume distribution by storage class.",
+      "fieldConfig": { "defaults": { "color": { "mode": "palette-classic" }, "custom": { "axisBorderShow": false, "axisCenteredZero": false, "axisColorMode": "text", "axisLabel": "", "axisPlacement": "auto", "fillOpacity": 80, "gradientMode": "none", "hideFrom": { "legend": false, "tooltip": false, "viz": false }, "lineWidth": 1, "scaleDistribution": { "type": "linear" }, "thresholdsStyle": { "mode": "off" } }, "mappings": [], "min": 0, "thresholds": { "mode": "absolute", "steps": [ { "color": "green" } ] }, "unit": "short" }, "overrides": [] },
+      "gridPos": { "h": 7, "w": 12, "x": 12, "y": 60 },
+      "id": 262,
+      "options": { "barRadius": 0, "barWidth": 0.7, "fullHighlight": false, "groupWidth": 0.7, "legend": { "calcs": [], "displayMode": "list", "placement": "bottom", "showLegend": true }, "orientation": "horizontal", "showValue": "auto", "stacking": "none", "tooltip": { "mode": "single", "sort": "none" }, "xTickLabelRotation": 0, "xTickLabelSpacing": 0 },
+      "pluginVersion": "11.6.0",
+      "targets": [
+        { "datasource": { "type": "prometheus", "uid": "${DS_PX-BACKUP}" }, "expr": "count by (storage_class) (pxbackup_backup_volume_info{backup_name=~\"$BackupName\", namespace=~\"$Namespace\", virtual_machine_name=\"\"})", "format": "time_series", "legendFormat": "{{storage_class}}", "refId": "A" }
+      ],
+      "title": "Volumes by Storage Class",
+      "type": "barchart"
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 67 },
+      "id": 8,
+      "panels": [],
+      "title": "Retention & Location Governance",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${DS_PX-BACKUP}" },
+      "description": "Retention, backup location, credential and data-path governance per application backup.",
+      "fieldConfig": { "defaults": { "custom": { "align": "auto", "filterable": true }, "mappings": [], "thresholds": { "mode": "absolute", "steps": [ { "color": "green" } ] } }, "overrides": [] },
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 68 },
+      "id": 270,
+      "options": { "cellHeight": "sm", "footer": { "countRows": false, "fields": "", "reducer": [ "sum" ], "show": false }, "showHeader": true },
+      "pluginVersion": "11.6.0",
+      "targets": [
+        { "datasource": { "type": "prometheus", "uid": "${DS_PX-BACKUP}" }, "expr": "pxbackup_backup_object_info{cluster_name=~\"$Cluster\", org_id=~\"$OrgID\", backup_object_type=\"All\", name=~\"$BackupName\", backup_location_name=~\"$BackupLocation\"}", "format": "table", "instant": true, "legendFormat": "", "refId": "A" }
+      ],
+      "title": "Retention & Location Governance",
+      "transformations": [
+        { "id": "organize", "options": {
+          "excludeByName": { "Time": true, "__name__": true, "Value": true, "instance": true, "job": true, "uid": true, "namespaces": true, "label_selectors": true, "ns_label_selectors": true, "advanced_resource_label_selector": true, "backup_path": true, "status": true, "status_reason": true, "backup_schedule_name": true, "backup_schedule_uid": true, "schedule_policy_name": true, "schedule_policy_uid": true, "backup_location_uid": true, "cloud_credential_uid": true, "cluster_uid": true, "volume_resource_only_policy_name": true, "volume_resource_only_policy_uid": true, "total_size": true, "resource_count": true, "volume_count": true, "backup_type": true, "backup_object_type": true, "skip_vm_auto_exec_rules": true, "virtual_machines_total_count": true, "virtual_machines_failed_count": true, "failed_resource_count": true, "failed_vol_count": true, "create_time_in_sec": true, "volumes_completion_time": true, "resources_completion_time": true, "total_completion_time": true, "backup_id_list": true, "previous_backup_id_list": true, "previous_status": true, "previous_volume_count": true, "previous_total_size": true, "cluster": true, "org_id": true },
+          "renameByName": { "name": "Backup", "cluster_name": "Cluster", "retention_period": "Retention Period", "retention_time": "Retention Time", "backup_location_name": "Location", "cloud_credential_name": "Credential", "direct_kdmp": "Direct KDMP", "large_resource_enabled": "Large Resource" }
+        } }
+      ],
+      "type": "table"
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 76 },
+      "id": 9,
+      "panels": [],
+      "title": "Failure Drilldown",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${DS_PX-BACKUP}" },
+      "description": "Namespaces in Failed or PartialSuccess state for the selected backup(s).",
+      "fieldConfig": {
+        "defaults": { "custom": { "align": "auto", "filterable": true }, "mappings": [], "thresholds": { "mode": "absolute", "steps": [ { "color": "green" } ] } },
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "Status" }, "properties": [ { "id": "custom.cellOptions", "value": { "type": "color-text" } }, { "id": "mappings", "value": [ { "type": "value", "options": { "Failed": { "color": "red", "index": 0 }, "PartialSuccess": { "color": "yellow", "index": 1 } } } ] } ] }
+        ]
+      },
+      "gridPos": { "h": 7, "w": 24, "x": 0, "y": 77 },
+      "id": 280,
+      "options": { "cellHeight": "sm", "footer": { "countRows": true, "fields": "", "reducer": [ "count" ], "show": true }, "showHeader": true },
+      "pluginVersion": "11.6.0",
+      "targets": [
+        { "datasource": { "type": "prometheus", "uid": "${DS_PX-BACKUP}" }, "expr": "pxbackup_namespace_resource_info{backup_name=~\"$BackupName\", status=~\"Failed|PartialSuccess\"}", "format": "table", "instant": true, "legendFormat": "", "refId": "A" }
+      ],
+      "title": "Namespaces Needing Attention",
+      "transformations": [
+        { "id": "organize", "options": { "excludeByName": { "Time": true, "__name__": true, "Value": true, "instance": true, "job": true, "backup_id": true, "create_time_in_sec": true }, "renameByName": { "name": "Namespace", "backup_name": "Backup", "status": "Status", "status_reason": "Reason", "total_resources": "Resources", "total_volumes": "Volumes", "total_failed_resources": "Failed Resources", "total_failed_volumes": "Failed Volumes" } } }
+      ],
+      "type": "table"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${DS_PX-BACKUP}" },
+      "description": "Resource types with at least one failed resource.",
+      "fieldConfig": { "defaults": { "custom": { "align": "auto", "filterable": true }, "mappings": [], "thresholds": { "mode": "absolute", "steps": [ { "color": "green" } ] } }, "overrides": [] },
+      "gridPos": { "h": 7, "w": 12, "x": 0, "y": 84 },
+      "id": 281,
+      "options": { "cellHeight": "sm", "footer": { "countRows": false, "fields": "", "reducer": [ "sum" ], "show": false }, "showHeader": true },
+      "pluginVersion": "11.6.0",
+      "targets": [
+        { "datasource": { "type": "prometheus", "uid": "${DS_PX-BACKUP}" }, "expr": "pxbackup_namespace_resource_type_info{backup_name=~\"$BackupName\", namespace=~\"$Namespace\", total_failed_resources!=\"0\"}", "format": "table", "instant": true, "legendFormat": "", "refId": "A" }
+      ],
+      "title": "Failed Resource Types",
+      "transformations": [
+        { "id": "organize", "options": { "excludeByName": { "Time": true, "__name__": true, "Value": true, "instance": true, "job": true, "backup_id": true }, "renameByName": { "namespace": "Namespace", "name": "Resource Type", "backup_name": "Backup", "total_resources": "Resources", "total_failed_resources": "Failed Resources" } } }
+      ],
+      "type": "table"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${DS_PX-BACKUP}" },
+      "description": "Application volumes in Failed or PartialSuccess state.",
+      "fieldConfig": { "defaults": { "custom": { "align": "auto", "filterable": true }, "mappings": [], "thresholds": { "mode": "absolute", "steps": [ { "color": "green" } ] } }, "overrides": [] },
+      "gridPos": { "h": 7, "w": 12, "x": 12, "y": 84 },
+      "id": 282,
+      "options": { "cellHeight": "sm", "footer": { "countRows": false, "fields": "", "reducer": [ "sum" ], "show": false }, "showHeader": true },
+      "pluginVersion": "11.6.0",
+      "targets": [
+        { "datasource": { "type": "prometheus", "uid": "${DS_PX-BACKUP}" }, "expr": "pxbackup_backup_volume_info{backup_name=~\"$BackupName\", namespace=~\"$Namespace\", virtual_machine_name=\"\", status=~\"Failed|PartialSuccess\"}", "format": "table", "instant": true, "legendFormat": "", "refId": "A" }
+      ],
+      "title": "Failed PVCs / Volumes",
+      "transformations": [
+        { "id": "organize", "options": { "excludeByName": { "Time": true, "__name__": true, "Value": true, "instance": true, "job": true, "backup_id": true, "pvc_id": true, "name": true, "driver_name": true, "virtual_machine_name": true, "volume_snapshot": true }, "renameByName": { "pvc": "PVC", "namespace": "Namespace", "backup_name": "Backup", "status": "Status", "storage_class": "Storage Class", "provisioner": "Provisioner", "total_size": "Total Size", "actual_size": "Actual Size", "backup_mode": "Backup Mode" } } }
+      ],
+      "type": "table"
+    }
+  ],
+  "refresh": "30s",
+  "schemaVersion": 41,
+  "tags": [ "portworx-backup", "pxbackup", "namespace", "application" ],
+  "templating": {
+    "list": [
+      { "allValue": ".*", "current": {}, "datasource": { "type": "prometheus", "uid": "${DS_PX-BACKUP}" }, "definition": "pxbackup_cluster_status", "includeAll": true, "label": "UserID", "multi": true, "name": "UserID", "options": [], "query": "pxbackup_cluster_status", "refresh": 1, "regex": "/.*user_id=\"([^\"]*).*/", "type": "query" },
+      { "allValue": ".*", "current": {}, "datasource": { "type": "prometheus", "uid": "${DS_PX-BACKUP}" }, "definition": "pxbackup_backup_object_info{backup_object_type=\"All\"}", "includeAll": true, "label": "OrgID", "multi": true, "name": "OrgID", "options": [], "query": "pxbackup_backup_object_info{backup_object_type=\"All\"}", "refresh": 1, "regex": "/.*org_id=\"([^\"]*).*/", "type": "query" },
+      { "allValue": ".*", "current": {}, "datasource": { "type": "prometheus", "uid": "${DS_PX-BACKUP}" }, "definition": "pxbackup_backup_object_info{backup_object_type=\"All\", org_id=~\"$OrgID\"}", "includeAll": true, "label": "Cluster", "multi": true, "name": "Cluster", "options": [], "query": "pxbackup_backup_object_info{backup_object_type=\"All\", org_id=~\"$OrgID\"}", "refresh": 2, "regex": "/.*cluster_name=\"([^\"]*).*/", "type": "query" },
+      { "allValue": ".*", "current": {}, "datasource": { "type": "prometheus", "uid": "${DS_PX-BACKUP}" }, "definition": "pxbackup_backup_object_info{backup_object_type=\"All\", cluster_name=~\"$Cluster\"}", "includeAll": true, "label": "BackupName", "multi": true, "name": "BackupName", "options": [], "query": "pxbackup_backup_object_info{backup_object_type=\"All\", cluster_name=~\"$Cluster\"}", "refresh": 2, "regex": "/.*\\bname=\"([^\"]*).*/", "type": "query" },
+      { "allValue": ".*", "current": {}, "datasource": { "type": "prometheus", "uid": "${DS_PX-BACKUP}" }, "definition": "pxbackup_backup_volume_info{virtual_machine_name=\"\"}", "includeAll": true, "label": "Namespace", "multi": true, "name": "Namespace", "options": [], "query": "pxbackup_backup_volume_info{virtual_machine_name=\"\"}", "refresh": 2, "regex": "/.*namespace=\"([^\"]*).*/", "type": "query" },
+      { "allValue": ".*", "current": {}, "datasource": { "type": "prometheus", "uid": "${DS_PX-BACKUP}" }, "definition": "pxbackup_backup_object_info{backup_object_type=\"All\", cluster_name=~\"$Cluster\"}", "includeAll": true, "label": "BackupLocation", "multi": true, "name": "BackupLocation", "options": [], "query": "pxbackup_backup_object_info{backup_object_type=\"All\", cluster_name=~\"$Cluster\"}", "refresh": 2, "regex": "/.*backup_location_name=\"([^\"]*).*/", "type": "query" },
+      { "allValue": ".*", "current": {}, "datasource": { "type": "prometheus", "uid": "${DS_PX-BACKUP}" }, "definition": "pxbackup_backup_object_info{backup_object_type=\"All\", cluster_name=~\"$Cluster\"}", "includeAll": true, "label": "SchedulePolicy", "multi": true, "name": "SchedulePolicy", "options": [], "query": "pxbackup_backup_object_info{backup_object_type=\"All\", cluster_name=~\"$Cluster\"}", "refresh": 2, "regex": "/.*schedule_policy_name=\"([^\"]*).*/", "type": "query" },
+      { "allValue": ".*", "current": {}, "datasource": { "type": "prometheus", "uid": "${DS_PX-BACKUP}" }, "definition": "pxbackup_backup_object_info{backup_object_type=\"All\", cluster_name=~\"$Cluster\"}", "includeAll": true, "label": "BackupType", "multi": true, "name": "BackupType", "options": [], "query": "pxbackup_backup_object_info{backup_object_type=\"All\", cluster_name=~\"$Cluster\"}", "refresh": 2, "regex": "/.*backup_type=\"([^\"]*).*/", "type": "query" },
+      { "allValue": ".*", "current": {}, "datasource": { "type": "prometheus", "uid": "${DS_PX-BACKUP}" }, "definition": "pxbackup_backup_volume_info{virtual_machine_name=\"\"}", "includeAll": true, "label": "StorageClass", "multi": true, "name": "StorageClass", "options": [], "query": "pxbackup_backup_volume_info{virtual_machine_name=\"\"}", "refresh": 2, "regex": "/.*storage_class=\"([^\"]*).*/", "type": "query" },
+      { "allValue": ".*", "current": {}, "datasource": { "type": "prometheus", "uid": "${DS_PX-BACKUP}" }, "definition": "pxbackup_backup_volume_info{virtual_machine_name=\"\"}", "includeAll": true, "label": "Provisioner", "multi": true, "name": "Provisioner", "options": [], "query": "pxbackup_backup_volume_info{virtual_machine_name=\"\"}", "refresh": 2, "regex": "/.*provisioner=\"([^\"]*).*/", "type": "query" }
+    ]
+  },
+  "time": { "from": "now-24h", "to": "now" },
+  "timepicker": {},
+  "timezone": "",
+  "title": "Portworx Backup - Namespace / App Protection",
+  "uid": "pxb-ns-app",
+  "version": 1,
+  "weekStart": ""
+}

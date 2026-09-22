@@ -133,7 +133,7 @@ done
 kubectl apply -f /tmp/px.yml
 
 # Install px cli
-curl -L -o /tmp/pxcli.tgz https://mirrors.portworx.com/packages/px-cli/v1.2.0/px-v1.2.0.linux.amd64.tar.gz                        
+curl -L -o /tmp/pxcli.tgz https://mirrors.portworx.com/packages/px-cli/v1.5.0/px-v1.5.0.linux.amd64.tar.gz                        
 tar -xzf /tmp/pxcli.tgz  -C /tmp/
 chmod +x /tmp/px/bin/px* 
 cp /tmp/px/bin/* /usr/local/bin/
@@ -167,12 +167,30 @@ kubectl -n portworx create configmap grafana-dashboards \
 --from-file=/assets/grafana/portworx-dr-dashboard.json
 kubectl -n portworx create configmap grafana-dashboard-config --from-file=/assets/grafana/grafana-dashboard-config.yaml
 
+GRAFANA_ADMIN_PW=$(openssl rand -base64 12)
+kubectl create secret generic grafana-admin-secret -n portworx --from-literal=admin-password="$GRAFANA_ADMIN_PW"
+
 if [ $platform = k8s ]; then
   kubectl -n portworx create configmap grafana-source-config --from-file=/assets/grafana/grafana-datasource.yaml
   kubectl -n portworx apply -f /assets/grafana/node-exporter.yaml
   kubectl -n portworx apply -f /assets/grafana/node-exporter-svc.yaml
   kubectl -n portworx apply -f /assets/grafana/node-exporter-servicemonitor.yaml
   kubectl -n portworx apply -f /assets/grafana/grafana.yaml
+  grafanaHost=$(kubectl get svc grafana -n portworx -o json | jq -r ".status.loadBalancer.ingress[0].hostname")
+  
+  # only wait once 5sec for LB hostname; do not block deployment (other clouds than AWS wont have a hostname)
+  if [ $grafanaHost = "null" ]; then
+    echo "Waiting 5sec for Grafana LB"
+    sleep 5
+    grafanaHost=$(kubectl get svc grafana -n portworx -o json | jq -r ".status.loadBalancer.ingress[0].hostname")
+  fi
+  
+  # if there is no hostname show hint
+  if [ $grafanaHost = "null" ]; then
+    grafanaHost="[check grafana svc in px namespace]"
+  fi
+  grafanaHost="$grafanaHost:3000"
+
 elif [ $platform = ocp4 ]; then
   oc apply -n portworx -f /assets/grafana/grafana-service-account.yaml
   oc -n portworx adm policy add-cluster-role-to-user cluster-monitoring-view -z grafana
@@ -183,6 +201,7 @@ elif [ $platform = ocp4 ]; then
   oc -n portworx create configmap grafana-source-config --from-file=/assets/grafana/grafana-datasource-ocp.yaml
   oc -n portworx apply -f /assets/grafana/grafana-ocp.yaml
   oc expose service grafana -n portworx
+  grafanaHost=$(oc get route -n portworx -ojson | jq -r ".items[0].spec.host")
 fi
 
 # install storkctl
@@ -194,3 +213,12 @@ while ! kubectl cp -n portworx $STORK_POD:/storkctl/linux/storkctl /usr/local/bi
 done
 chmod +x /usr/local/bin/storkctl
 storkctl completion bash >/etc/bash_completion.d/storkctl
+
+echo "PX grafana LB assigned: $grafanaHost"
+cat <<EOF >> /etc/motd
++================================================+
+Portworx Grafana User Interface Access URL : http://$grafanaHost
+Portworx Grafana admin user name: admin
+Portworx Grafana admin user password: $GRAFANA_ADMIN_PW
++================================================+
+EOF
