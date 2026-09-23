@@ -10,7 +10,11 @@ fi
 kubectl apply -f /assets/helm-backup/namespace.yml
 
 curl -O https://raw.githubusercontent.com/portworx/helm/master/stable/px-central-$VERSION.tgz
-helm install px-central px-central-$VERSION.tgz --namespace $NAMESPACE --create-namespace --version $VERSION --skip-crds --set persistentStorage.enabled=true,persistentStorage.storageClassName="px-csi-db",pxbackup.enabled=true,oidc.centralOIDC.updateAdminProfile=false,pxbackup.prometheus.replicas=1,pxbackup.alertmanager.replicas=1,service.pxCentralUIServiceType="LoadBalancer",service.pxBackupUIServiceType="LoadBalancer"
+if [ "$platform" = ocp4 ]; then
+  helm install px-central px-central-$VERSION.tgz --namespace $NAMESPACE --create-namespace --version $VERSION --skip-crds --set isOpenshift=true,persistentStorage.enabled=true,persistentStorage.storageClassName="px-csi-db",pxbackup.enabled=true,oidc.centralOIDC.updateAdminProfile=false,pxbackup.prometheus.replicas=1,pxbackup.alertmanager.replicas=1,service.pxCentralUIServiceType="ClusterIP",service.pxBackupUIServiceType="ClusterIP"
+else
+  helm install px-central px-central-$VERSION.tgz --namespace $NAMESPACE --create-namespace --version $VERSION --skip-crds --set persistentStorage.enabled=true,persistentStorage.storageClassName="px-csi-db",pxbackup.enabled=true,oidc.centralOIDC.updateAdminProfile=false,pxbackup.prometheus.replicas=1,pxbackup.alertmanager.replicas=1,service.pxCentralUIServiceType="LoadBalancer",service.pxBackupUIServiceType="LoadBalancer"
+fi
 until (kubectl get po -n $NAMESPACE -ljob-name=pxcentral-post-install-hook  -o wide | awk '{print $1, $2, $3}' |grep "Completed"); do echo "Waiting for post install hook";sleep 3; done
 until (kubectl get po -n $NAMESPACE -lapp=px-backup  -o wide | awk '{print $1, $2, $3}' | grep "Running" | grep "1/1"); do echo "Waiting for backup service";sleep 3; done
 
