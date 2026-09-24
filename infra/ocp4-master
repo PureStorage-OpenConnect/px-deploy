@@ -53,9 +53,9 @@ EOF
 
 # set ocp ui console banner color
 case "$[$cluster%8]" in
-  0) bgcolor='#fe5000' ;;  # orange
-  1) bgcolor='#40b605' ;;  # green
-  2) bgcolor='#0074d9' ;;  # blue
+  0) bgcolor='#0074d9' ;;  # blue
+  1) bgcolor='#fe5000' ;;  # orange
+  2) bgcolor='#40b605' ;;  # green
   3) bgcolor='#8e44ad' ;;  # purple
   4) bgcolor='#ffdc00' ;;  # yellow
   5) bgcolor='#ff4136' ;;  # red
