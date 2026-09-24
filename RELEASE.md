@@ -1,3 +1,15 @@
+# 6.8
+##Improvements
+* OCP-V templates are now using nested virtualziation on AWS VMs (significant cost reduction)
+* Grafana has now deployment individual password set
+* Portworx Backup Grafana Metrics integrated
+* PX Backup Version 3.1.1
+* PX Enterprise 3.7.0
+* new px2 template using StoreV2
+##Fixes
+* fix minio
+* fix node join race condition
+
 # 6.7.1
 ##Fixes
 * add runc package for k8s setup
