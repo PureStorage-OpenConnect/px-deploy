@@ -1,0 +1,243 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: garage
+  namespace: garage
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: manage-crds-garage-garage
+rules:
+- apiGroups: ["apiextensions.k8s.io"]
+  resources: ["customresourcedefinitions"]
+  verbs: ["get", "list", "watch", "create", "patch"]
+
+- apiGroups: ["deuxfleurs.fr"]
+  resources: ["garagenodes"]
+  verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: allow-crds-for-garage-garage
+subjects:
+- kind: ServiceAccount
+  name: garage
+  namespace: garage
+roleRef:
+  kind: ClusterRole
+  name: manage-crds-garage-garage
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: garage-config
+  namespace: garage
+data:
+  garage.toml: |-
+    metadata_dir = "/mnt/meta"
+    data_dir = "/mnt/data"
+    db_engine = "lmdb"
+    block_size = "1048576"
+    replication_factor = 1
+    consistency_mode = "consistent"
+    compression_level = 1
+    rpc_bind_addr = "[::]:3901"
+    # rpc_secret will be populated by the init container from a k8s secret object
+    rpc_secret = "__RPC_SECRET_REPLACE__"
+    bootstrap_peers = [
+    ]
+    [kubernetes_discovery]
+    namespace = "garage"
+    service_name = "garage"
+    skip_crd = false
+    [s3_api]
+    s3_region = "garage"
+    api_bind_addr = "[::]:3900"
+    root_domain = ".s3.garage.tld"
+    [s3_web]
+    bind_addr = "[::]:3902"
+    root_domain = ".web.garage.tld"
+    index = "index.html"
+    [admin]
+    api_bind_addr = "[::]:3903"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: garage-headless
+  namespace: garage
+spec:
+  type: ClusterIP
+  clusterIP: None
+  ports:
+    - port: 3900
+      targetPort: 3900
+      protocol: TCP
+      name: s3-api
+    - port: 3902
+      targetPort: 3902
+      protocol: TCP
+      name: s3-web
+  selector:
+    app.kubernetes.io/name: garage
+    app.kubernetes.io/instance: garage
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: garage
+  namespace: garage
+spec:
+  type: NodePort
+  ports:
+    - port: 3900
+      targetPort: 3900
+      protocol: TCP
+      name: s3-api
+    - port: 3902
+      targetPort: 3902
+      protocol: TCP
+      name: s3-web
+  selector:
+    app.kubernetes.io/name: garage
+    app.kubernetes.io/instance: garage
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  labels:
+  name: garage
+  namespace: garage
+spec:
+  persistentVolumeClaimRetentionPolicy:
+    whenDeleted: Retain
+    whenScaled: Retain
+  podManagementPolicy: OrderedReady
+  replicas: 1
+  revisionHistoryLimit: 10
+  selector:
+    matchLabels:
+      app.kubernetes.io/instance: garage
+      app.kubernetes.io/name: garage
+  serviceName: garage-headless
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/instance: garage
+        app.kubernetes.io/name: garage
+    spec:
+      containers:
+      - args:
+        - server
+        - --single-node
+        command:
+        - /garage
+        env:
+        image: dxflrs/amd64_garage:v2.4.1
+        imagePullPolicy: IfNotPresent
+        name: garage
+        ports:
+        - containerPort: 3900
+          name: s3-api
+          protocol: TCP
+        - containerPort: 3902
+          name: web-api
+          protocol: TCP
+        - containerPort: 3903
+          name: admin
+          protocol: TCP
+        resources: {}
+        securityContext:
+          capabilities:
+            drop:
+            - ALL
+          readOnlyRootFilesystem: true
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
+        volumeMounts:
+        - mountPath: /mnt/meta
+          name: meta
+        - mountPath: /mnt/data
+          name: data
+        - mountPath: /etc/garage.toml
+          name: etc
+          subPath: garage.toml
+      dnsPolicy: ClusterFirst
+      initContainers:
+      - command:
+        - sh
+        - -c
+        - sed "s/__RPC_SECRET_REPLACE__/$RPC_SECRET/" /mnt/garage.toml > /mnt/etc/garage.toml
+        env:
+        - name: RPC_SECRET
+          valueFrom:
+            secretKeyRef:
+              key: rpcSecret
+              name: garage-rpc-secret
+        image: busybox:stable
+        imagePullPolicy: IfNotPresent
+        name: garage-init
+        resources: {}
+        securityContext:
+          capabilities:
+            drop:
+            - ALL
+          readOnlyRootFilesystem: true
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
+        volumeMounts:
+        - mountPath: /mnt/garage.toml
+          name: configmap
+          subPath: garage.toml
+        - mountPath: /mnt/etc
+          name: etc
+      restartPolicy: Always
+      schedulerName: default-scheduler
+      securityContext:
+        fsGroup: 1000
+        fsGroupChangePolicy: OnRootMismatch
+        runAsGroup: 1000
+        runAsNonRoot: true
+        runAsUser: 1000
+      serviceAccount: garage
+      serviceAccountName: garage
+      terminationGracePeriodSeconds: 30
+      volumes:
+      - configMap:
+          defaultMode: 420
+          name: garage-config
+        name: configmap
+      - emptyDir: {}
+        name: etc
+  updateStrategy:
+    rollingUpdate:
+      partition: 0
+    type: RollingUpdate
+  volumeClaimTemplates:
+  - apiVersion: v1
+    kind: PersistentVolumeClaim
+    metadata:
+      name: meta
+    spec:
+      accessModes:
+      - ReadWriteOnce
+      resources:
+        requests:
+          storage: 100Mi
+      storageClassName: px-csi-db
+      volumeMode: Filesystem
+  - apiVersion: v1
+    kind: PersistentVolumeClaim
+    metadata:
+      name: data
+    spec:
+      accessModes:
+      - ReadWriteOnce
+      resources:
+        requests:
+          storage: 100Mi
+      storageClassName: px-csi-db
+      volumeMode: Filesystem
