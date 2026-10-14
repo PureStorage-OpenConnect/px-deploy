@@ -57,7 +57,7 @@ spec:
       hostNetwork: true
       containers:
       - name: wetty
-        image: wettyoss/wetty:latest
+        image: wettyoss/wetty:2.5.0
         args:
         - "--port"
         - "3000"
