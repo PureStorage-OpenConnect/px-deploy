@@ -1,0 +1,2 @@
+description: Install and run Portworx on each cluster
+scripts: ["install-px","install-awscli","garage"]

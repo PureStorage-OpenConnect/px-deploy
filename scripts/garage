@@ -14,3 +14,5 @@ kubectl apply -f /assets/garage/garage.yaml
 #create bucket
 # aws s3api create-bucket --bucket demobucket  --region garage
 
+#json
+# garage json-api CreateKey '{"name": "demokey","neverExpires": true, "allow": {"createBucket":true}}'

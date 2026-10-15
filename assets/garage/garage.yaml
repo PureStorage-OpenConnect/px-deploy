@@ -133,9 +133,16 @@ spec:
       - args:
         - server
         - --single-node
+        - --default-bucket
         command:
         - /garage
         env:
+        - name: GARAGE_DEFAULT_ACCESS_KEY
+          value: "miniominio"
+        - name: GARAGE_DEFAULT_SECRET_KEY
+          value: "minio1234minio1234"
+        - name: GARAGE_DEFAULT_BUCKET
+          value: "default"
         image: dxflrs/amd64_garage:v2.4.1
         imagePullPolicy: IfNotPresent
         name: garage
