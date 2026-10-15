@@ -67,7 +67,9 @@ type VmHardwareDiskBackingType struct {
 type Vsphere_Px_Clouddrive struct {
 	mobid  string
 	diskid string
+	datastore string
 	path   string
+	extension string
 }
 
 type Govc_Vm_Info struct {
@@ -437,7 +439,7 @@ func vsphere_destroy_vm(nodemap string, v *vsphereRestClient) {
 }
 
 // rest api only disconnects vmdk from vm. no actual deletion
-func vsphere_delete_clouddrive(clouddrive Vsphere_Px_Clouddrive, v *vsphereRestClient) {
+func vsphere_delete_clouddrive(clouddrive Vsphere_Px_Clouddrive,datacenter string, v *vsphereRestClient) {
 	defer wg.Done()
 
 	transCfg := &http.Transport{
@@ -459,10 +461,42 @@ func vsphere_delete_clouddrive(clouddrive Vsphere_Px_Clouddrive, v *vsphereRestC
 	}
 
 	if resp.StatusCode == 204 {
-		fmt.Printf("  disconnected clouddrive %v from VM %v\n", clouddrive.path, clouddrive.mobid)
+		fmt.Printf("  disconnected clouddrive [%v] %v.%v from VM %v\n", clouddrive.datastore, clouddrive.path,clouddrive.extension, clouddrive.mobid)
+		//disconnect successful. delete .vmdk file
+		req, err := http.NewRequest("DELETE",fmt.Sprintf("https://%v/folder/%v.%v?dcPath=%v&dsName=%v",v.server,clouddrive.path,clouddrive.extension,datacenter,clouddrive.datastore), nil)
+		if err != nil {
+			fmt.Println(err)
+		}
+		req.SetBasicAuth(v.user,v.password)
+
+		resp1, err := client.Do(req)
+		if err != nil {
+			fmt.Println(err)
+		}
+		if resp1.StatusCode == 204 {
+			fmt.Printf("    deleted clouddrive vmdk [%v] %v.%v\n", clouddrive.datastore, clouddrive.path,clouddrive.extension)
+			//vmdk delete successful delete *-flat.vmdk file
+			req, err := http.NewRequest("DELETE",fmt.Sprintf("https://%v/folder/%v-flat.%v?dcPath=%v&dsName=%v",v.server,clouddrive.path,clouddrive.extension,datacenter,clouddrive.datastore), nil)
+			if err != nil {
+				fmt.Println(err)
+			}
+			req.SetBasicAuth(v.user,v.password)
+
+			resp2, err := client.Do(req)
+			if err != nil {
+				fmt.Println(err)
+			}
+			if resp2.StatusCode == 204 {
+				fmt.Printf("    deleted clouddrive vmdk [%v] %v-flat.%v\n", clouddrive.datastore, clouddrive.path,clouddrive.extension)	
+			} else {
+				fmt.Printf("Error deleting clouddrive [%v] %v-flat.%v Code %s\n",clouddrive.datastore, clouddrive.path,clouddrive.extension, resp2.StatusCode)	
+			}
+		} else {
+			fmt.Printf("Error deleting clouddrive [%v] %v.%v Code %s\n",clouddrive.datastore, clouddrive.path,clouddrive.extension,resp1.StatusCode)
+		}
 		return
 	} else {
-		fmt.Printf("VM %s clouddrive %s (path %s) delete failed. Code %s \n", clouddrive.mobid, clouddrive.diskid, clouddrive.path, resp.Status)
+		fmt.Printf("VM %s clouddrive %s (path %s.%s) disconnect failed. Code %s \n", clouddrive.mobid, clouddrive.diskid, clouddrive.path,clouddrive.extension, resp.Status)
 	}
 }
 
@@ -502,7 +536,25 @@ func vsphere_get_clouddrives(nodemap string, v *vsphereRestClient, clouddrives *
 				//fmt.Printf("Disk Path %v \n", val.Backing.Vmdk_file)
 				disk.diskid = diskid
 				disk.mobid = mobid
-				disk.path = val.Backing.Vmdk_file
+				// split vmdk_file result into datastore, path & extension object
+				// format "[datastore] path/filename.vmdk"
+				startIdx := strings.Index(val.Backing.Vmdk_file, "[")
+				endIdx := strings.Index(val.Backing.Vmdk_file, "]")
+				if startIdx == -1 || endIdx == -1 || endIdx <= startIdx {
+					return fmt.Errorf("invalid vmdk disk format: missing brackets []")
+				}
+				disk.datastore = val.Backing.Vmdk_file[startIdx+1 : endIdx]
+				// Get the remainder of the path after the closing bracket
+				remainder := strings.TrimSpace(val.Backing.Vmdk_file[endIdx+1:])
+				// Separate the extension from the file path
+				lastDotIdx := strings.LastIndex(remainder, ".")
+				if lastDotIdx == -1 {
+					return fmt.Errorf("invalid vmdk disk format: missing file extension")
+				}
+
+				disk.path = remainder[:lastDotIdx]
+				disk.extension = remainder[lastDotIdx+1:]
+				
 				*clouddrives = append(*clouddrives, disk)
 			}
 		}
@@ -602,29 +654,6 @@ func vsphere_poweroff_wait(nodemap string, v *vsphereRestClient) {
 	}
 }
 
-func vsphere_import_tf_clouddrive(config *Config) {
-	fmt.Println(White + "prepare to import clouddrives to tf state" + Reset)
-	cmd := exec.Command("terraform", "-chdir=/px-deploy/.px-deploy/tf-deployments/"+config.Name, "plan", "-var-file", ".tfvars", "-out=tfplan", "-input=false", "-parallelism=50", "-generate-config-out=disks.tf")
-	//cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	errapply := cmd.Run()
-	if errapply != nil {
-		fmt.Println(Yellow + "ERROR: terraform plan for clouddrive disk import failed. Check validity of terraform scripts" + Reset)
-		//die(errapply.Error())
-		return
-	}
-	fmt.Println(White + "importing clouddrives to tf state" + Reset)
-	cmd = exec.Command("terraform", "-chdir=/px-deploy/.px-deploy/tf-deployments/"+config.Name, "apply", "-input=false", "-parallelism=50", "-auto-approve", "tfplan")
-	//cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	errapply = cmd.Run()
-	if errapply != nil {
-		fmt.Println(Yellow + "ERROR: terraform import for clouddrive disk import failed. Check validity of terraform scripts" + Reset)
-		//die(errapply.Error())
-		return
-	}
-}
-
 func vsphere_prepare_destroy(config *Config) error {
 	vrest := NewVsphereRestClient(config.Vsphere_Host, config.Vsphere_User, config.Vsphere_Password)
 	err := vrest.Login()
@@ -650,27 +679,9 @@ func vsphere_prepare_destroy(config *Config) error {
 	}
 	wg.Wait()
 	fmt.Printf("  found %v clouddrives \n", len(clouddrives))
-	fmt.Printf("clouddrive collection finished\n")
+	fmt.Printf("clouddrive collection finished\n\n")
 
 	if len(clouddrives) > 0 {
-		file, err := os.OpenFile("/px-deploy/.px-deploy/tf-deployments/"+config.Name+"/import.tf", os.O_CREATE|os.O_WRONLY, 0644)
-		if err != nil {
-			die(err.Error())
-		}
-		defer file.Close()
-
-		// as we cant delete clouddrive vmdk using rest api we import them to tf state
-		for i, val := range clouddrives {
-			_, err = file.WriteString(fmt.Sprintf("import {\n  to = vsphere_virtual_disk.pxcd%v\n  id = \"/%s/%s\"\n}\n", i, config.Vsphere_Datacenter, val.path))
-			if err != nil {
-				die(err.Error())
-			}
-		}
-
-		//import clouddrives into tf state
-		vsphere_import_tf_clouddrive(config)
-		os.Rename("/px-deploy/.px-deploy/tf-deployments/"+config.Name+"/import.tf", "/px-deploy/.px-deploy/tf-deployments/"+config.Name+"/import.tf.done")
-
 		fmt.Printf("waiting to power off VMs\n")
 		for i := 1; i <= clusters; i++ {
 			wg.Add(1)
@@ -682,29 +693,15 @@ func vsphere_prepare_destroy(config *Config) error {
 			}
 		}
 		wg.Wait()
-		fmt.Printf("VM poweroff finished\n")
-		fmt.Printf("disconnecting clouddrives \n")
+		fmt.Printf("VM poweroff finished\n\n")
+		fmt.Printf("disconnecting & deleting clouddrives \n")
 		for _, val := range clouddrives {
 			wg.Add(1)
-			go vsphere_delete_clouddrive(val, &vrest)
+			go vsphere_delete_clouddrive(val, config.Vsphere_Datacenter, &vrest)
 		}
 		wg.Wait()
-		fmt.Printf("disconnect clouddrives finished \n")
+		fmt.Printf("disconnect & delete clouddrives finished \n\n")
 	}
-	/*
-		fmt.Printf("Waiting for VM deletion\n")
-		for i := 1; i <= clusters; i++ {
-			wg.Add(1)
-			go vsphere_destroy_vm(config.Vsphere_Nodemap[fmt.Sprintf("%s-master-%v", config.Name, i)], &vrest)
-
-			for j := 1; j <= nodes; j++ {
-				wg.Add(1)
-				go vsphere_destroy_vm(config.Vsphere_Nodemap[fmt.Sprintf("%s-node-%v-%v", config.Name, i, j)], &vrest)
-			}
-		}
-		wg.Wait()
-		fmt.Printf("VM delete finished\n")
-	*/
 	return nil
 }
 
