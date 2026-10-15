@@ -2,17 +2,17 @@ kubectl create ns garage
 kubectl create secret -n garage generic garage-rpc-secret --type=Opaque --from-literal rpcSecret="$(openssl rand -hex 32)"
 kubectl apply -f /assets/garage/garage.yaml
 
-#alias garage='kubectl exec -it garage-0 -c garage -n garage -- /garage $*'
-
 # DOCS
 # https://garagehq.deuxfleurs.fr/documentation/quick-start/
+#
+##alias garage='kubectl exec -it garage-0 -c garage -n garage -- /garage $*'
 #
 #create key
 #'garage key create demouser'
 #'garage key allow --create-bucket demouser'
-
+#
 #create bucket
 # aws s3api create-bucket --bucket demobucket  --region garage
-
+#
 #json
 # garage json-api CreateKey '{"name": "demokey","neverExpires": true, "allow": {"createBucket":true}}'
