@@ -1,8 +1,11 @@
 package main
 
 import (
+	"context"
 	"crypto/tls"
+	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -65,11 +68,16 @@ type VmHardwareDiskBackingType struct {
 }
 
 type Vsphere_Px_Clouddrive struct {
-	mobid  string
-	diskid string
+	mobid     string
+	diskid    string
 	datastore string
-	path   string
+	path      string
 	extension string
+}
+
+type cloudDriveResult struct {
+	drives []Vsphere_Px_Clouddrive
+	err    error
 }
 
 type Govc_Vm_Info struct {
@@ -88,6 +96,15 @@ type Govc_Vm_Config struct {
 type Govc_Extra_Config struct {
 	Key   string `json:"Key"`
 	Value string `json:"Value"`
+}
+type DeleteResponse struct {
+	Status string `json:"status"`
+}
+
+// Configurable retry settings
+type RetryConfig struct {
+	MaxRetries int
+	BaseDelay  time.Duration
 }
 
 func NewVsphereRestClient(server string, user string, password string) vsphereRestClient {
@@ -113,7 +130,7 @@ func (v *vsphereRestClient) Login() error {
 		fmt.Println(err)
 		return error(err)
 	}
-
+	defer resp.Body.Close()
 	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {
 		fmt.Println(err)
@@ -151,7 +168,7 @@ func (v *vsphereRestClient) Logout() error {
 		fmt.Println(err)
 		return error(err)
 	}
-
+	defer resp.Body.Close()
 	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {
 		fmt.Println(err)
@@ -191,7 +208,7 @@ func getvSphereNodeIp(mobId string, mac string, v *vsphereRestClient) (ip string
 		fmt.Println(err)
 		return "", error(err)
 	}
-
+	defer resp.Body.Close()
 	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {
 		fmt.Println(err)
@@ -328,6 +345,7 @@ func vsphere_get_remotetemplate(config *Config, c chan string) {
 		c <- "0"
 		return
 	}
+	defer resp.Body.Close()
 	remoteTemplateVersion, err := io.ReadAll(resp.Body)
 	if err != nil {
 		fmt.Printf("CheckTemplateVersion: error reading http s3 request body %s \n", error(err))
@@ -430,7 +448,7 @@ func vsphere_destroy_vm(nodemap string, v *vsphereRestClient) {
 	if err != nil {
 		fmt.Println(err)
 	}
-
+	defer resp.Body.Close()
 	if resp.StatusCode == 200 {
 		return
 	} else {
@@ -439,16 +457,18 @@ func vsphere_destroy_vm(nodemap string, v *vsphereRestClient) {
 }
 
 // rest api only disconnects vmdk from vm. no actual deletion
-func vsphere_delete_clouddrive(clouddrive Vsphere_Px_Clouddrive,datacenter string, v *vsphereRestClient) {
-	defer wg.Done()
+/*func vsphere_disconnect_clouddrive(clouddrive Vsphere_Px_Clouddrive,datacenter string, v *vsphereRestClient) {
+	//defer wg.Done()
 
 	transCfg := &http.Transport{
 		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
 	}
 	client := http.Client{Transport: transCfg}
-	req, err := http.NewRequest("DELETE", "https://"+v.server+"/api/vcenter/vm/"+clouddrive.mobid+"/hardware/disk/"+clouddrive.diskid, nil)
+	fmt.Printf(" prepare delete https://%s/api/vcenter/vm/%s/hardware/disk/%s\n",v.server,clouddrive.mobid,clouddrive.diskid )
+	fmt.Printf(" candidate clouddrive [%v] %v.%v from VM %v\n", clouddrive.datastore, clouddrive.path,clouddrive.extension, clouddrive.mobid)
+	req, err := http.NewRequest("DELETE", fmt.Sprintf("https://%s/api/vcenter/vm/%s/hardware/disk/%s",v.server,clouddrive.mobid,clouddrive.diskid), nil)
 	if err != nil {
-		fmt.Println(err)
+		fmt.Printf("Error building request %v",err)
 	}
 
 	req.Header = http.Header{
@@ -457,8 +477,13 @@ func vsphere_delete_clouddrive(clouddrive Vsphere_Px_Clouddrive,datacenter strin
 
 	resp, err := client.Do(req)
 	if err != nil {
-		fmt.Println(err)
+		fmt.Printf("Error executing request %v",err)
 	}
+
+	if resp == nil {
+		fmt.Printf("received nil response")
+	}
+	defer resp.Body.Close()
 
 	if resp.StatusCode == 204 {
 		fmt.Printf("  disconnected clouddrive [%v] %v.%v from VM %v\n", clouddrive.datastore, clouddrive.path,clouddrive.extension, clouddrive.mobid)
@@ -487,9 +512,9 @@ func vsphere_delete_clouddrive(clouddrive Vsphere_Px_Clouddrive,datacenter strin
 				fmt.Println(err)
 			}
 			if resp2.StatusCode == 204 {
-				fmt.Printf("    deleted clouddrive vmdk [%v] %v-flat.%v\n", clouddrive.datastore, clouddrive.path,clouddrive.extension)	
+				fmt.Printf("    deleted clouddrive vmdk [%v] %v-flat.%v\n", clouddrive.datastore, clouddrive.path,clouddrive.extension)
 			} else {
-				fmt.Printf("Error deleting clouddrive [%v] %v-flat.%v Code %s\n",clouddrive.datastore, clouddrive.path,clouddrive.extension, resp2.StatusCode)	
+				fmt.Printf("Error deleting clouddrive [%v] %v-flat.%v Code %s\n",clouddrive.datastore, clouddrive.path,clouddrive.extension, resp2.StatusCode)
 			}
 		} else {
 			fmt.Printf("Error deleting clouddrive [%v] %v.%v Code %s\n",clouddrive.datastore, clouddrive.path,clouddrive.extension,resp1.StatusCode)
@@ -499,12 +524,83 @@ func vsphere_delete_clouddrive(clouddrive Vsphere_Px_Clouddrive,datacenter strin
 		fmt.Printf("VM %s clouddrive %s (path %s.%s) disconnect failed. Code %s \n", clouddrive.mobid, clouddrive.diskid, clouddrive.path,clouddrive.extension, resp.Status)
 	}
 }
+*/
 
-func vsphere_get_clouddrives(nodemap string, v *vsphereRestClient, clouddrives *[]Vsphere_Px_Clouddrive) (err error) {
-	var responseobj VmInfo
-	var disk Vsphere_Px_Clouddrive
+func deleteResourceWithRetry(ctx context.Context, client *http.Client, url string, header http.Header, cfg RetryConfig) error {
+	var lastErr error
+
+	for attempt := 0; attempt <= cfg.MaxRetries; attempt++ {
+		if attempt > 0 {
+			// Calculate exponential backoff delay (e.g., 500ms, 1s, 2s)
+			backoff := cfg.BaseDelay * (1 << (attempt - 1))
+			fmt.Printf("Attempt %d failed (%v). Retrying in %v...\n", attempt, lastErr, backoff)
+			time.Sleep(backoff)
+			select {
+			case <-time.After(backoff):
+			case <-ctx.Done():
+				return fmt.Errorf("retry cancelled by context: %w", ctx.Err())
+			}
+		}
+
+		// Perform the request
+		err := executeDelete(ctx, client, url, header)
+		if err == nil {
+			return nil // Success!
+		}
+
+		lastErr = err
+	}
+	return fmt.Errorf("request failed after %d retries: %w", cfg.MaxRetries, lastErr)
+}
+
+func executeDelete(ctx context.Context, client *http.Client, url string, header http.Header) error {
+	ctx, cancel := context.WithTimeout(ctx, 15*time.Second)
+	defer cancel()
+	var ErrNilResponse = errors.New("received nil response from HTTP client")
+	req, err := http.NewRequestWithContext(ctx, http.MethodDelete, url, nil)
+	if err != nil {
+		return fmt.Errorf("failed to create request: %w", err)
+	}
+	req.Header = header
+
+	resp, err := client.Do(req)
+
+	if err != nil {
+		return fmt.Errorf("transport error: %w", err)
+	}
+	defer resp.Body.Close()
+
+	// Explicitly validate that response is not nil
+	if resp == nil {
+		return ErrNilResponse
+	}
+
+	// Handle 204 No Content
+	if resp.StatusCode == http.StatusNoContent {
+		return nil
+	}
+
+	// Handle error status codes
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		bodyBytes, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("unexpected status %d: %s", resp.StatusCode, string(bodyBytes))
+	}
+
+	// Handle JSON decoding with EOF handling
+	var result DeleteResponse
+	err = json.NewDecoder(resp.Body).Decode(&result)
+	if errors.Is(err, io.EOF) {
+		return nil // Body was empty despite 200 OK
+	} else if err != nil {
+		return fmt.Errorf("failed to decode JSON: %w", err)
+	}
+
+	return nil
+}
+
+func vsphere_get_clouddrives(nodemap string, v *vsphereRestClient, results chan<- cloudDriveResult) {
 	defer wg.Done()
-
+	var found []Vsphere_Px_Clouddrive
 	mobid := strings.Split(nodemap, ",")[0]
 
 	transCfg := &http.Transport{
@@ -513,55 +609,67 @@ func vsphere_get_clouddrives(nodemap string, v *vsphereRestClient, clouddrives *
 	client := http.Client{Transport: transCfg}
 	req, err := http.NewRequest("GET", "https://"+v.server+"/api/vcenter/vm/"+mobid, nil)
 	if err != nil {
-		fmt.Println(err)
+		results <- cloudDriveResult{err: fmt.Errorf("vm %s: build request: %w", mobid, err)}
+		return
 	}
 	req.Header = http.Header{
 		"vmware-api-session-id": {v.sessionid},
 	}
 	resp, err := client.Do(req)
 	if err != nil {
-		fmt.Println(err)
+		results <- cloudDriveResult{err: fmt.Errorf("vm %s: request failed: %w", mobid, err)}
+		return
 	}
+	defer resp.Body.Close()
+
 	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {
-		fmt.Println(err)
+		results <- cloudDriveResult{err: fmt.Errorf("vm %s: read body: %w", mobid, err)}
+		return
 	}
-	json.Unmarshal(respBody, &responseobj)
 
+	if resp.StatusCode != http.StatusOK {
+		results <- cloudDriveResult{err: fmt.Errorf("vm %s: collect px cloud drive api error %v, response %s", mobid, resp.StatusCode, string(respBody))}
+		return
+	}
+	var responseobj VmInfo
+	if err := json.Unmarshal(respBody, &responseobj); err != nil {
+		results <- cloudDriveResult{err: fmt.Errorf("vm %s: decode json: %w", mobid, err)}
+		return
+	}
+	re := regexp.MustCompile(`\[[A-Za-z0-9\-]*\]\ fcd\/[_a-f0-9/]*[0-9a-f]{32}\.vmdk`)
 	//fmt.Printf("DEBUG code %v state %v \n", resp.StatusCode, responseobj.Disks)
-
-	if resp.StatusCode == 200 {
-		for diskid, val := range responseobj.Disks {
-			if regexp.MustCompile(`\[[A-Za-z0-9\-]*\]\ fcd\/[0-9a-f]{32}\.vmdk`).MatchString(val.Backing.Vmdk_file) {
-				//fmt.Printf("Disk Path %v \n", val.Backing.Vmdk_file)
-				disk.diskid = diskid
-				disk.mobid = mobid
-				// split vmdk_file result into datastore, path & extension object
-				// format "[datastore] path/filename.vmdk"
-				startIdx := strings.Index(val.Backing.Vmdk_file, "[")
-				endIdx := strings.Index(val.Backing.Vmdk_file, "]")
-				if startIdx == -1 || endIdx == -1 || endIdx <= startIdx {
-					return fmt.Errorf("invalid vmdk disk format: missing brackets []")
-				}
-				disk.datastore = val.Backing.Vmdk_file[startIdx+1 : endIdx]
-				// Get the remainder of the path after the closing bracket
-				remainder := strings.TrimSpace(val.Backing.Vmdk_file[endIdx+1:])
-				// Separate the extension from the file path
-				lastDotIdx := strings.LastIndex(remainder, ".")
-				if lastDotIdx == -1 {
-					return fmt.Errorf("invalid vmdk disk format: missing file extension")
-				}
-
-				disk.path = remainder[:lastDotIdx]
-				disk.extension = remainder[lastDotIdx+1:]
-				
-				*clouddrives = append(*clouddrives, disk)
-			}
+	for diskid, val := range responseobj.Disks {
+		vmdk := val.Backing.Vmdk_file
+		if !re.MatchString(vmdk) {
+			continue
 		}
-	} else {
-		return fmt.Errorf("Collect px cloud drive api error %v\n Response %v \n", resp.StatusCode, string(respBody))
+		fmt.Printf("ADD Disk Path %v \n", vmdk)
+
+		// format "[datastore] path/filename.vmdk"
+		startIdx := strings.Index(val.Backing.Vmdk_file, "[")
+		endIdx := strings.Index(val.Backing.Vmdk_file, "]")
+		if startIdx == -1 || endIdx == -1 || endIdx <= startIdx {
+			results <- cloudDriveResult{err: fmt.Errorf("vm %s: invalid vmdk disk format: missing brackets []", mobid)}
+			return
+		}
+		remainder := strings.TrimSpace(val.Backing.Vmdk_file[endIdx+1:])
+		// Separate the extension from the file path
+		lastDotIdx := strings.LastIndex(remainder, ".")
+
+		if lastDotIdx == -1 {
+			results <- cloudDriveResult{err: fmt.Errorf("vm %s: invalid vmdk disk format: missing file extension", mobid)}
+			return
+		}
+		found = append(found, Vsphere_Px_Clouddrive{
+			mobid:     mobid,
+			diskid:    diskid,
+			datastore: vmdk[startIdx+1 : endIdx],
+			path:      remainder[:lastDotIdx],
+			extension: remainder[lastDotIdx+1:],
+		})
 	}
-	return
+	results <- cloudDriveResult{drives: found}
 }
 
 func vsphere_get_vm_powerstate(mobid string, v *vsphereRestClient) (powerstate string, err error) {
@@ -581,6 +689,7 @@ func vsphere_get_vm_powerstate(mobid string, v *vsphereRestClient) (powerstate s
 	if err != nil {
 		fmt.Println(err)
 	}
+	defer resp.Body.Close()
 	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {
 		fmt.Println(err)
@@ -618,7 +727,7 @@ func vsphere_poweroff_wait(nodemap string, v *vsphereRestClient) {
 	if err != nil {
 		fmt.Println(err)
 	}
-
+	defer resp.Body.Close()
 	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {
 		fmt.Println(err)
@@ -667,17 +776,36 @@ func vsphere_prepare_destroy(config *Config) error {
 	nodes, _ := strconv.Atoi(config.Nodes)
 
 	fmt.Printf("collecting px clouddrives\n")
-	var clouddrives []Vsphere_Px_Clouddrive
+	results := make(chan cloudDriveResult)
+
 	for i := 1; i <= clusters; i++ {
 		wg.Add(1)
-		go vsphere_get_clouddrives(config.Vsphere_Nodemap[fmt.Sprintf("%s-master-%v", config.Name, i)], &vrest, &clouddrives)
+		go vsphere_get_clouddrives(config.Vsphere_Nodemap[fmt.Sprintf("%s-master-%v", config.Name, i)], &vrest, results)
 
 		for j := 1; j <= nodes; j++ {
 			wg.Add(1)
-			go vsphere_get_clouddrives(config.Vsphere_Nodemap[fmt.Sprintf("%s-node-%v-%v", config.Name, i, j)], &vrest, &clouddrives)
+			go vsphere_get_clouddrives(config.Vsphere_Nodemap[fmt.Sprintf("%s-node-%v-%v", config.Name, i, j)], &vrest, results)
 		}
 	}
-	wg.Wait()
+	go func() {
+		wg.Wait()
+		close(results)
+	}()
+	// single consumer: the only place the slice is modified
+	var clouddrives []Vsphere_Px_Clouddrive
+	var errs []error
+	for r := range results {
+		if r.err != nil {
+			errs = append(errs, r.err)
+			continue
+		}
+		clouddrives = append(clouddrives, r.drives...)
+	}
+
+	if len(errs) > 0 {
+		return fmt.Errorf("collecting clouddrives failed: %w", errors.Join(errs...))
+	}
+
 	fmt.Printf("  found %v clouddrives \n", len(clouddrives))
 	fmt.Printf("clouddrive collection finished\n\n")
 
@@ -695,11 +823,41 @@ func vsphere_prepare_destroy(config *Config) error {
 		wg.Wait()
 		fmt.Printf("VM poweroff finished\n\n")
 		fmt.Printf("disconnecting & deleting clouddrives \n")
-		for _, val := range clouddrives {
-			wg.Add(1)
-			go vsphere_delete_clouddrive(val, config.Vsphere_Datacenter, &vrest)
+
+		transCfg := &http.Transport{
+			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
 		}
-		wg.Wait()
+
+		client := &http.Client{Timeout: 10 * time.Second, Transport: transCfg}
+		ctx := context.Background()
+
+		httpconfig := RetryConfig{
+			MaxRetries: 10,
+			BaseDelay:  500 * time.Millisecond,
+		}
+
+		for _, val := range clouddrives {
+			//wg.Add(1)
+			//go vsphere_delete_clouddrive(val, config.Vsphere_Datacenter, &vrest)
+			//vsphere_disconnect_clouddrive(val, config.Vsphere_Datacenter, &vrest)
+			fmt.Printf("  Disconnect & Delete: %s[-flat].%s\n", val.path, val.extension)
+			//fmt.Printf("  Disk disconnect: https://%s/api/vcenter/vm/%s/hardware/disk/%s (%s)\n", vrest.server, val.mobid, val.diskid, val.path)
+			err := deleteResourceWithRetry(ctx, client, fmt.Sprintf("https://%s/api/vcenter/vm/%s/hardware/disk/%s", vrest.server, val.mobid, val.diskid), http.Header{"vmware-api-session-id": {vrest.sessionid}}, httpconfig)
+			if err != nil {
+				fmt.Printf("  Disk disconnect failed: %v\n", err)
+			}
+			//fmt.Printf("    Disk delete: https://%s/folder/%v.%v?dcPath=%v&dsName=%v\n", vrest.server, val.path, val.extension, config.Vsphere_Datacenter, val.datastore)
+			err = deleteResourceWithRetry(ctx, client, fmt.Sprintf("https://%s/folder/%v.%v?dcPath=%v&dsName=%v", vrest.server, val.path, val.extension, config.Vsphere_Datacenter, val.datastore), http.Header{"Authorization": {fmt.Sprintf("Basic %s", base64.StdEncoding.EncodeToString([]byte(fmt.Sprintf("%s:%s", config.Vsphere_User, config.Vsphere_Password))))}}, httpconfig)
+			if err != nil {
+				fmt.Printf("    Disk delete failed: %v\n", err)
+			}
+			//fmt.Printf("    Disk delete: https://%s/folder/%v-flat.%v?dcPath=%v&dsName=%v\n", vrest.server, val.path, val.extension, config.Vsphere_Datacenter, val.datastore)
+			err = deleteResourceWithRetry(ctx, client, fmt.Sprintf("https://%s/folder/%v-flat.%v?dcPath=%v&dsName=%v", vrest.server, val.path, val.extension, config.Vsphere_Datacenter, val.datastore), http.Header{"Authorization": {fmt.Sprintf("Basic %s", base64.StdEncoding.EncodeToString([]byte(fmt.Sprintf("%s:%s", config.Vsphere_User, config.Vsphere_Password))))}}, httpconfig)
+			if err != nil {
+				fmt.Printf("    Disk delete failed: %v\n", err)
+			}
+		}
+		//wg.Wait()
 		fmt.Printf("disconnect & delete clouddrives finished \n\n")
 	}
 	return nil
