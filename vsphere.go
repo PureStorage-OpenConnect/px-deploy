@@ -1,11 +1,24 @@
 package main
 
+// vSphere helper functions rewritten to use the vSphere SOAP API (vim25)
+// through the govmomi library.
+//
+//   go get github.com/vmware/govmomi
+//
+// Notes:
+//  - The "mobid" stored in Vsphere_Nodemap ("vm-123,<mac>") is the same value as the
+//    SOAP ManagedObjectReference.Value of the VM, so the nodemap format is unchanged.
+//  - govc is no longer needed for template-version lookup, destroy, rename or
+//    markastemplate. It is still used for import.ova, because OVA/OVF import is
+//    implemented inside the govc CLI and is not part of the public govmomi API.
+
 import (
-	"crypto/tls"
-	"encoding/json"
+	"context"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"os"
 	"os/exec"
 	"path"
@@ -14,208 +27,168 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/vmware/govmomi"
+	"github.com/vmware/govmomi/find"
+	"github.com/vmware/govmomi/object"
+	"github.com/vmware/govmomi/vim25/mo"
+	"github.com/vmware/govmomi/vim25/soap"
+	"github.com/vmware/govmomi/vim25/types"
 )
 
-type VmGuestNetworkingInterfacesInfo struct {
-	Mac string                                  `json:"mac_address"`
-	Nic string                                  `json:"nic"`
-	Ip  VmGuestNetworkingInterfacesIpConfigInfo `json:"ip"`
-}
+// ---------------------------------------------------------------------------
+// types
+// ---------------------------------------------------------------------------
 
-type VmGuestNetworkingInterfacesIpConfigInfo struct {
-	Ip_addresses []VmGuestNetworkingInterfacesIpAddressInfo `json:"ip_addresses"`
-}
+type VsphereClient interface{}
 
-type VmGuestNetworkingInterfacesIpAddressInfo struct {
-	Ip_address    string `json:"ip_address"`
-	Prefix_length int64  `json:"prefix_length"`
-	State         string `json:"state"`
-}
-
-type VsphereRestClient interface{}
-
-type vsphereRestClient struct {
-	server    string
-	user      string
-	password  string
-	sessionid string
-}
-
-type VsphereRestApiError struct {
-	Error_type string `json:"error_type"`
-}
-type VsphereVmPwrResponseObj struct {
-	State string `json:"state"`
-}
-
-type VmInfo struct {
-	Disks map[string]VmHardwareDiskInfo `json:"disks"`
-}
-
-type VmHardwareDiskInfo struct {
-	Backing  VmHardwareDiskBackingType `json:"backing"`
-	Label    string                    `json:"label"`
-	Type     string                    `json:"type"`
-	Capacity int64                     `json:"capacity"`
-}
-
-type VmHardwareDiskBackingType struct {
-	Type      string `json:"type"`
-	Vmdk_file string `json:"vmdk_file"`
+type vsphereClient struct {
+	server   string
+	user     string
+	password string
+	client   *govmomi.Client
 }
 
 type Vsphere_Px_Clouddrive struct {
-	mobid  string
-	diskid string
+	mobid     string
+	device    types.BaseVirtualDevice // disk device, used for detaching
 	datastore string
-	path   string
+	path      string // path without extension, e.g. fcd/ab/cd/<32hex>
 	extension string
 }
 
-type Govc_Vm_Info struct {
-	Vms []Govc_Vm_Entry `json:"VirtualMachines"`
+type cloudDriveResult struct {
+	drives []Vsphere_Px_Clouddrive
+	err    error
 }
 
-type Govc_Vm_Entry struct {
-	Name   string         `json:"Name"`
-	Config Govc_Vm_Config `json:"Config"`
+// Configurable retry settings
+type RetryConfig struct {
+	MaxRetries int
+	BaseDelay  time.Duration
 }
 
-type Govc_Vm_Config struct {
-	ExtraConfig []Govc_Extra_Config `json:"ExtraConfig"`
+// ---------------------------------------------------------------------------
+// session handling
+// ---------------------------------------------------------------------------
+
+func NewVsphereClient(server string, user string, password string) *vsphereClient {
+	return &vsphereClient{server: server, user: user, password: password}
 }
 
-type Govc_Extra_Config struct {
-	Key   string `json:"Key"`
-	Value string `json:"Value"`
-}
+// Login opens a SOAP session against https://<server>/sdk
+func (v *vsphereClient) Login() error {
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
 
-func NewVsphereRestClient(server string, user string, password string) vsphereRestClient {
-	return vsphereRestClient{server, user, password, ""}
-}
-
-func (v *vsphereRestClient) Login() error {
-
-	transCfg := &http.Transport{
-		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
-	}
-	client := http.Client{Transport: transCfg}
-
-	req, err := http.NewRequest("POST", "https://"+v.server+"/api/session", nil)
+	u, err := soap.ParseURL(v.server) // adds https:// and /sdk if missing
 	if err != nil {
 		fmt.Println(err)
-		return error(err)
+		return err
 	}
+	u.User = url.UserPassword(v.user, v.password)
 
-	req.SetBasicAuth(v.user, v.password)
-	resp, err := client.Do(req)
+	// insecure = true (same as InsecureSkipVerify in the REST version)
+	c, err := govmomi.NewClient(ctx, u, true)
 	if err != nil {
-		fmt.Println(err)
-		return error(err)
+		fmt.Printf("Login failed: %v\n", err)
+		return err
 	}
+	v.client = c
+	return nil
+}
 
-	respBody, err := io.ReadAll(resp.Body)
-	if err != nil {
-		fmt.Println(err)
-		return error(err)
-	}
-
-	if resp.StatusCode == 201 {
-		v.sessionid = strings.Trim(string(respBody), "\"")
+func (v *vsphereClient) Logout() error {
+	if v.client == nil {
 		return nil
-	} else {
-		fmt.Printf("Login failed. Code %s resp '%s'", resp.Status, string(respBody))
-		return fmt.Errorf(resp.Status)
 	}
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+
+	err := v.client.Logout(ctx)
+	if err != nil {
+		fmt.Printf("Logout failed: %v\n", err)
+		return err
+	}
+	v.client = nil
+	return nil
 }
 
-func (v *vsphereRestClient) Logout() error {
-
-	transCfg := &http.Transport{
-		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+// vmFromNodemap builds a VM object from a "mobid,mac" nodemap entry
+func (v *vsphereClient) vmFromNodemap(nodemap string) (*object.VirtualMachine, error) {
+	mobid := strings.Split(nodemap, ",")[0]
+	if mobid == "" {
+		return nil, fmt.Errorf("empty mobid in nodemap entry %q", nodemap)
 	}
-	client := http.Client{Transport: transCfg}
-
-	req, err := http.NewRequest("DELETE", "https://"+v.server+"/api/session", nil)
-	if err != nil {
-		fmt.Println(err)
-		return error(err)
+	if v.client == nil {
+		return nil, errors.New("no active vSphere session")
 	}
-
-	req.Header = http.Header{
-		"vmware-api-session-id": {v.sessionid},
-	}
-
-	resp, err := client.Do(req)
-	if err != nil {
-		fmt.Println(err)
-		return error(err)
-	}
-
-	respBody, err := io.ReadAll(resp.Body)
-	if err != nil {
-		fmt.Println(err)
-		return error(err)
-	}
-
-	if resp.StatusCode == 204 {
-		//fmt.Printf("Logout successful\n")
-		v.sessionid = ""
-		return nil
-	} else {
-		fmt.Printf("Logout failed. Code %s resp '%s'", resp.Status, string(respBody))
-		return fmt.Errorf(resp.Status)
-	}
+	return object.NewVirtualMachine(v.client.Client, types.ManagedObjectReference{
+		Type:  "VirtualMachine",
+		Value: mobid,
+	}), nil
 }
 
-func getvSphereNodeIp(mobId string, mac string, v *vsphereRestClient) (ip string, err error) {
-	var responseObj []VmGuestNetworkingInterfacesInfo
+// ---------------------------------------------------------------------------
+// VM IP lookup
+// ---------------------------------------------------------------------------
 
-	transCfg := &http.Transport{
-		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
-	}
-	client := http.Client{Transport: transCfg}
+func getvSphereNodeIp(mobId string, mac string, v *vsphereClient) (ip string, err error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
 
-	req, err := http.NewRequest("GET", "https://"+v.server+"/api/vcenter/vm/"+mobId+"/guest/networking/interfaces", nil)
+	vm, err := v.vmFromNodemap(mobId)
 	if err != nil {
-		fmt.Println(err)
-		return "", error(err)
+		return "", err
 	}
 
-	req.Header = http.Header{
-		"vmware-api-session-id": {v.sessionid},
+	var props mo.VirtualMachine
+	if err := vm.Properties(ctx, vm.Reference(), []string{"guest.net"}, &props); err != nil {
+		fmt.Printf("Request for VM IP failed: %v\n", err)
+		return "", err
 	}
 
-	resp, err := client.Do(req)
-	if err != nil {
-		fmt.Println(err)
-		return "", error(err)
-	}
-
-	respBody, err := io.ReadAll(resp.Body)
-	if err != nil {
-		fmt.Println(err)
-		return "", error(err)
-	}
-
-	if resp.StatusCode == 200 {
-		json.Unmarshal(respBody, &responseObj)
-		for _, val := range responseObj {
-			if val.Mac == mac {
-				for _, ip := range val.Ip.Ip_addresses {
-					if ip.State == "PREFERRED" {
-						return ip.Ip_address, nil
-					}
+	if props.Guest != nil {
+		for _, nic := range props.Guest.Net {
+			if !strings.EqualFold(nic.MacAddress, mac) || nic.IpConfig == nil {
+				continue
+			}
+			for _, a := range nic.IpConfig.IpAddress {
+				// SOAP reports the state in lower case ("preferred")
+				if strings.EqualFold(a.State, "preferred") {
+					return a.IpAddress, nil
 				}
 			}
 		}
-	} else {
-		fmt.Printf("Request for VM IP failed. code %s resp '%s' \n", resp.Status, string(respBody))
-		return "", fmt.Errorf(resp.Status)
 	}
 
-	return "", fmt.Errorf("API did not get IP for node %s \n request body: %v \n", mobId, responseObj)
+	return "", fmt.Errorf("API did not get IP for node %s (mac %s)\n", mobId, mac)
 }
+
+func vsphere_get_node_ip(config *Config, node string) string {
+	vrest := NewVsphereClient(config.Vsphere_Host, config.Vsphere_User, config.Vsphere_Password)
+	nodeid := strings.Split(config.Vsphere_Nodemap[node], ",")
+
+	if len(nodeid) != 2 {
+		return ""
+	}
+	if err := vrest.Login(); err != nil {
+		die("error creating vsphere session\n")
+		return ""
+	}
+	defer vrest.Logout()
+
+	nip, err := getvSphereNodeIp(nodeid[0], nodeid[1], vrest)
+	if err != nil {
+		fmt.Printf("IP error %s \n", error(err))
+		return ""
+	}
+	return nip
+}
+
+// ---------------------------------------------------------------------------
+// terraform variables (unchanged)
+// ---------------------------------------------------------------------------
 
 func vsphere_create_variables(config *Config) []string {
 	var tf_variables []string
@@ -280,11 +253,14 @@ func vsphere_create_variables(config *Config) []string {
 	return tf_variables
 }
 
+// ---------------------------------------------------------------------------
+// template version check
+// ---------------------------------------------------------------------------
+
 // displays a message if local pxd template version differs from repository
 // checked against an already deployed master-1 instance
-// we cannot check pxd-templateid of a vsphere template as rest api does not show these as VM
+// we cannot check pxd-templateid of a vsphere template as the API does not show these as VM
 // so we'll check after deployment when VMs have been created
-// benefit: we already have mobid of master-1
 func vsphere_check_templateversion(deployment string) {
 	config := parse_yaml("/px-deploy/.px-deploy/deployments/" + deployment + ".yml")
 
@@ -314,6 +290,7 @@ func vsphere_check_templateversion(deployment string) {
 	}
 }
 
+// remote version is fetched from the template repository over plain HTTP (not a vSphere call)
 func vsphere_get_remotetemplate(config *Config, c chan string) {
 	client := http.Client{}
 	req, err := http.NewRequest("GET", config.Vsphere_Repo+"pxdid.txt", nil)
@@ -328,6 +305,7 @@ func vsphere_get_remotetemplate(config *Config, c chan string) {
 		c <- "0"
 		return
 	}
+	defer resp.Body.Close()
 	remoteTemplateVersion, err := io.ReadAll(resp.Body)
 	if err != nil {
 		fmt.Printf("CheckTemplateVersion: error reading http s3 request body %s \n", error(err))
@@ -335,7 +313,6 @@ func vsphere_get_remotetemplate(config *Config, c chan string) {
 		return
 	}
 	if resp.StatusCode == 200 {
-		//fmt.Printf("Remote Template Version\t%s \n", remoteTemplateVersion)
 		c <- string(remoteTemplateVersion)
 	} else {
 		fmt.Printf("CheckTemplateVersion: Error: s3 request returned statuscode %v \n", resp.StatusCode)
@@ -344,366 +321,379 @@ func vsphere_get_remotetemplate(config *Config, c chan string) {
 	}
 }
 
+// The SOAP API exposes VM.config.extraConfig directly, so govc is no longer required.
 func vsphere_get_localtemplate(config *Config, c chan string) {
-	var govc_vm_info Govc_Vm_Info
-	var govc_opts []string
-	var localtemplateid string
-	// vsphere REST api does not provide VM.config.extraconfig Information
-	// so we need to run govc
-	govc_opts = append(govc_opts, fmt.Sprintf("GOVC_URL=%s", config.Vsphere_Host))
-	govc_opts = append(govc_opts, fmt.Sprintf("GOVC_INSECURE=1"))
-	govc_opts = append(govc_opts, fmt.Sprintf("GOVC_USERNAME=%s", config.Vsphere_User))
-	govc_opts = append(govc_opts, fmt.Sprintf("GOVC_PASSWORD=%s", config.Vsphere_Password))
-	govc_opts = append(govc_opts, fmt.Sprintf("GOVC_DATACENTER=%s", config.Vsphere_Datacenter))
-	cmd := exec.Command("govc", "vm.info", "-json", config.Name+"-master-1")
-	cmd.Env = os.Environ()
-	cmd.Env = append(cmd.Env, govc_opts...)
-	govcresponse, err := cmd.CombinedOutput()
-	if err != nil {
-		fmt.Println(Yellow + "Cannot get local pxd templateid. govc reported stderr" + Reset)
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	defer cancel()
+
+	vrest := NewVsphereClient(config.Vsphere_Host, config.Vsphere_User, config.Vsphere_Password)
+	if err := vrest.Login(); err != nil {
+		fmt.Println(Yellow + "Cannot get local pxd templateid. vSphere login failed" + Reset)
 		c <- "0"
 		return
 	}
-	json.Unmarshal(govcresponse, &govc_vm_info)
-	if len(govc_vm_info.Vms) == 1 {
-		for _, val := range govc_vm_info.Vms[0].Config.ExtraConfig {
-			if val.Key == "pxd.templateid" {
-				localtemplateid = val.Value
-				//fmt.Printf("Local Template Version\t%s\n", val.Value)
-			}
-		}
-		if localtemplateid != "" {
-			c <- localtemplateid
-			return
-		} else {
-			fmt.Printf("Warning: found local installed px-deploy template, but did not get value pxd.templateid\nPlease run px-deploy vsphere-init\n\n")
-			c <- "0"
-		}
-	} else {
-		fmt.Printf("cannot get local template version (result %v)\n", len(govc_vm_info.Vms))
-		c <- "0"
-		return
-	}
-}
-
-func vsphere_get_node_ip(config *Config, node string) string {
-	vrest := NewVsphereRestClient(config.Vsphere_Host, config.Vsphere_User, config.Vsphere_Password)
-	nodeid := strings.Split(config.Vsphere_Nodemap[node], ",")
-
-	if len(nodeid) != 2 {
-		return ""
-	}
-	err := vrest.Login()
 	defer vrest.Logout()
 
+	finder := find.NewFinder(vrest.client.Client, true)
+	dc, err := finder.Datacenter(ctx, config.Vsphere_Datacenter)
 	if err != nil {
-		die("error creating vsphere session\n")
-	} else {
-		nip, err := getvSphereNodeIp(nodeid[0], nodeid[1], &vrest)
-		if err != nil {
-			fmt.Printf("IP error %s \n", error(err))
-		} else {
-			return nip
-		}
-	}
-	return ""
-}
-
-func vsphere_destroy_vm(nodemap string, v *vsphereRestClient) {
-	defer wg.Done()
-
-	mobid := strings.Split(nodemap, ",")[0]
-	transCfg := &http.Transport{
-		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
-	}
-	client := http.Client{Transport: transCfg}
-	req, err := http.NewRequest("DELETE", "https://"+v.server+"/api/vcenter/vm/"+mobid, nil)
-	if err != nil {
-		fmt.Println(err)
-	}
-
-	req.Header = http.Header{
-		"vmware-api-session-id": {v.sessionid},
-	}
-
-	resp, err := client.Do(req)
-	if err != nil {
-		fmt.Println(err)
-	}
-
-	if resp.StatusCode == 200 {
+		fmt.Printf("%sCannot get local pxd templateid. Datacenter lookup failed: %v%s\n", Yellow, err, Reset)
+		c <- "0"
 		return
-	} else {
-		fmt.Printf("VM %s delete failed. Code %s \n", mobid, resp.Status)
 	}
-}
+	finder.SetDatacenter(dc)
 
-// rest api only disconnects vmdk from vm. no actual deletion
-func vsphere_delete_clouddrive(clouddrive Vsphere_Px_Clouddrive,datacenter string, v *vsphereRestClient) {
-	defer wg.Done()
-
-	transCfg := &http.Transport{
-		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+	vmName := config.Name + "-master-1"
+	if config.Vsphere_Folder != "" {
+		vmName = path.Join(config.Vsphere_Folder, vmName)
 	}
-	client := http.Client{Transport: transCfg}
-	req, err := http.NewRequest("DELETE", "https://"+v.server+"/api/vcenter/vm/"+clouddrive.mobid+"/hardware/disk/"+clouddrive.diskid, nil)
+	vm, err := finder.VirtualMachine(ctx, vmName)
 	if err != nil {
-		fmt.Println(err)
-	}
-
-	req.Header = http.Header{
-		"vmware-api-session-id": {v.sessionid},
-	}
-
-	resp, err := client.Do(req)
-	if err != nil {
-		fmt.Println(err)
-	}
-
-	if resp.StatusCode == 204 {
-		fmt.Printf("  disconnected clouddrive [%v] %v.%v from VM %v\n", clouddrive.datastore, clouddrive.path,clouddrive.extension, clouddrive.mobid)
-		//disconnect successful. delete .vmdk file
-		req, err := http.NewRequest("DELETE",fmt.Sprintf("https://%v/folder/%v.%v?dcPath=%v&dsName=%v",v.server,clouddrive.path,clouddrive.extension,datacenter,clouddrive.datastore), nil)
-		if err != nil {
-			fmt.Println(err)
-		}
-		req.SetBasicAuth(v.user,v.password)
-
-		resp1, err := client.Do(req)
-		if err != nil {
-			fmt.Println(err)
-		}
-		if resp1.StatusCode == 204 {
-			fmt.Printf("    deleted clouddrive vmdk [%v] %v.%v\n", clouddrive.datastore, clouddrive.path,clouddrive.extension)
-			//vmdk delete successful delete *-flat.vmdk file
-			req, err := http.NewRequest("DELETE",fmt.Sprintf("https://%v/folder/%v-flat.%v?dcPath=%v&dsName=%v",v.server,clouddrive.path,clouddrive.extension,datacenter,clouddrive.datastore), nil)
-			if err != nil {
-				fmt.Println(err)
-			}
-			req.SetBasicAuth(v.user,v.password)
-
-			resp2, err := client.Do(req)
-			if err != nil {
-				fmt.Println(err)
-			}
-			if resp2.StatusCode == 204 {
-				fmt.Printf("    deleted clouddrive vmdk [%v] %v-flat.%v\n", clouddrive.datastore, clouddrive.path,clouddrive.extension)	
-			} else {
-				fmt.Printf("Error deleting clouddrive [%v] %v-flat.%v Code %s\n",clouddrive.datastore, clouddrive.path,clouddrive.extension, resp2.StatusCode)	
-			}
-		} else {
-			fmt.Printf("Error deleting clouddrive [%v] %v.%v Code %s\n",clouddrive.datastore, clouddrive.path,clouddrive.extension,resp1.StatusCode)
-		}
+		fmt.Printf("cannot get local template version (%v)\n", err)
+		c <- "0"
 		return
-	} else {
-		fmt.Printf("VM %s clouddrive %s (path %s.%s) disconnect failed. Code %s \n", clouddrive.mobid, clouddrive.diskid, clouddrive.path,clouddrive.extension, resp.Status)
-	}
-}
-
-func vsphere_get_clouddrives(nodemap string, v *vsphereRestClient, clouddrives *[]Vsphere_Px_Clouddrive) (err error) {
-	var responseobj VmInfo
-	var disk Vsphere_Px_Clouddrive
-	defer wg.Done()
-
-	mobid := strings.Split(nodemap, ",")[0]
-
-	transCfg := &http.Transport{
-		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
-	}
-	client := http.Client{Transport: transCfg}
-	req, err := http.NewRequest("GET", "https://"+v.server+"/api/vcenter/vm/"+mobid, nil)
-	if err != nil {
-		fmt.Println(err)
-	}
-	req.Header = http.Header{
-		"vmware-api-session-id": {v.sessionid},
-	}
-	resp, err := client.Do(req)
-	if err != nil {
-		fmt.Println(err)
-	}
-	respBody, err := io.ReadAll(resp.Body)
-	if err != nil {
-		fmt.Println(err)
-	}
-	json.Unmarshal(respBody, &responseobj)
-
-	//fmt.Printf("DEBUG code %v state %v \n", resp.StatusCode, responseobj.Disks)
-
-	if resp.StatusCode == 200 {
-		for diskid, val := range responseobj.Disks {
-			if regexp.MustCompile(`\[[A-Za-z0-9\-]*\]\ fcd\/[0-9a-f]{32}\.vmdk`).MatchString(val.Backing.Vmdk_file) {
-				//fmt.Printf("Disk Path %v \n", val.Backing.Vmdk_file)
-				disk.diskid = diskid
-				disk.mobid = mobid
-				// split vmdk_file result into datastore, path & extension object
-				// format "[datastore] path/filename.vmdk"
-				startIdx := strings.Index(val.Backing.Vmdk_file, "[")
-				endIdx := strings.Index(val.Backing.Vmdk_file, "]")
-				if startIdx == -1 || endIdx == -1 || endIdx <= startIdx {
-					return fmt.Errorf("invalid vmdk disk format: missing brackets []")
-				}
-				disk.datastore = val.Backing.Vmdk_file[startIdx+1 : endIdx]
-				// Get the remainder of the path after the closing bracket
-				remainder := strings.TrimSpace(val.Backing.Vmdk_file[endIdx+1:])
-				// Separate the extension from the file path
-				lastDotIdx := strings.LastIndex(remainder, ".")
-				if lastDotIdx == -1 {
-					return fmt.Errorf("invalid vmdk disk format: missing file extension")
-				}
-
-				disk.path = remainder[:lastDotIdx]
-				disk.extension = remainder[lastDotIdx+1:]
-				
-				*clouddrives = append(*clouddrives, disk)
-			}
-		}
-	} else {
-		return fmt.Errorf("Collect px cloud drive api error %v\n Response %v \n", resp.StatusCode, string(respBody))
-	}
-	return
-}
-
-func vsphere_get_vm_powerstate(mobid string, v *vsphereRestClient) (powerstate string, err error) {
-	var responseobj VsphereVmPwrResponseObj
-	transCfg := &http.Transport{
-		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
-	}
-	client := http.Client{Transport: transCfg}
-	req, err := http.NewRequest("GET", "https://"+v.server+"/api/vcenter/vm/"+mobid+"/power", nil)
-	if err != nil {
-		fmt.Println(err)
-	}
-	req.Header = http.Header{
-		"vmware-api-session-id": {v.sessionid},
-	}
-	resp, err := client.Do(req)
-	if err != nil {
-		fmt.Println(err)
-	}
-	respBody, err := io.ReadAll(resp.Body)
-	if err != nil {
-		fmt.Println(err)
-	}
-	json.Unmarshal(respBody, &responseobj)
-	//fmt.Printf("DEBUG code %v state %v \n", resp.StatusCode, responseobj.State)
-	if resp.StatusCode == 200 {
-		return responseobj.State, nil
-	} else {
-		return "ERROR", fmt.Errorf("Power State API request returned %v", resp.StatusCode)
-	}
-}
-
-func vsphere_poweroff_wait(nodemap string, v *vsphereRestClient) {
-	defer wg.Done()
-	var responseObj VsphereRestApiError
-
-	mobid := strings.Split(nodemap, ",")[0]
-
-	transCfg := &http.Transport{
-		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
-	}
-	client := http.Client{Transport: transCfg}
-
-	req, err := http.NewRequest("POST", "https://"+v.server+"/api/vcenter/vm/"+mobid+"/power?action=stop", nil)
-	if err != nil {
-		fmt.Println(err)
 	}
 
-	req.Header = http.Header{
-		"vmware-api-session-id": {v.sessionid},
-	}
-
-	resp, err := client.Do(req)
-	if err != nil {
-		fmt.Println(err)
-	}
-
-	respBody, err := io.ReadAll(resp.Body)
-	if err != nil {
-		fmt.Println(err)
-	}
-
-	// http 204 is perfect
-	// 400 error_type "ALREADY_IN_DESIRED_STATE" is also fine
-	// anything else show error
-
-	if resp.StatusCode == 204 {
-		stopped := false
-		for stopped != true {
-			time.Sleep(2 * time.Second)
-			pwrstate, err := vsphere_get_vm_powerstate(mobid, v)
-			if err != nil {
-				fmt.Printf(" %v \n", err)
-				stopped = true
-			}
-			if pwrstate == "POWERED_OFF" {
-				stopped = true
-			}
-		}
+	var props mo.VirtualMachine
+	if err := vm.Properties(ctx, vm.Reference(), []string{"config.extraConfig"}, &props); err != nil || props.Config == nil {
+		fmt.Println(Yellow + "Cannot get local pxd templateid. Property request failed" + Reset)
+		c <- "0"
 		return
-	} else if resp.StatusCode == 400 {
-		json.Unmarshal(respBody, &responseObj)
-		if responseObj.Error_type == "ALREADY_IN_DESIRED_STATE" {
-			fmt.Printf("  Info: VM %s already powered off\n", mobid)
-		} else {
-			fmt.Printf("VM Poweroff failed 400. Code %s resp '%s'\n", resp.Status, responseObj.Error_type)
+	}
+
+	var localtemplateid string
+	for _, opt := range props.Config.ExtraConfig {
+		ov := opt.GetOptionValue()
+		if ov != nil && ov.Key == "pxd.templateid" {
+			localtemplateid = fmt.Sprint(ov.Value)
 		}
-	} else {
-		fmt.Printf("VM Poweroff failed. Code %s resp '%s'\n", resp.Status, string(respBody))
+	}
+	if localtemplateid != "" {
+		c <- localtemplateid
+		return
+	}
+	fmt.Printf("Warning: found local installed px-deploy template, but did not get value pxd.templateid\nPlease run px-deploy vsphere-init\n\n")
+	c <- "0"
+}
+
+// ---------------------------------------------------------------------------
+// VM destroy / power / clouddrive collection
+// ---------------------------------------------------------------------------
+
+func vsphere_destroy_vm(nodemap string, v *vsphereClient) {
+	defer wg.Done()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+	defer cancel()
+
+	vm, err := v.vmFromNodemap(nodemap)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	task, err := vm.Destroy(ctx)
+	if err == nil {
+		err = task.Wait(ctx)
+	}
+	if err != nil {
+		fmt.Printf("VM %s delete failed: %v\n", vm.Reference().Value, err)
 	}
 }
+
+// retryWithBackoff runs fn up to MaxRetries+1 times with exponential backoff.
+func retryWithBackoff(ctx context.Context, cfg RetryConfig, fn func(ctx context.Context) error) error {
+	var lastErr error
+
+	for attempt := 0; attempt <= cfg.MaxRetries; attempt++ {
+		if attempt > 0 {
+			// exponential backoff delay (e.g., 500ms, 1s, 2s)
+			backoff := cfg.BaseDelay * (1 << (attempt - 1))
+			fmt.Printf("Attempt %d failed (%v). Retrying in %v...\n", attempt, lastErr, backoff)
+			select {
+			case <-time.After(backoff):
+			case <-ctx.Done():
+				return fmt.Errorf("retry cancelled by context: %w", ctx.Err())
+			}
+		}
+
+		attemptCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
+		err := fn(attemptCtx)
+		cancel()
+		if err == nil {
+			return nil
+		}
+		lastErr = err
+	}
+	return fmt.Errorf("request failed after %d retries: %w", cfg.MaxRetries, lastErr)
+}
+
+func isNotFound(err error) bool {
+	if err == nil {
+		return false
+	}
+	msg := strings.ToLower(err.Error())
+	return strings.Contains(msg, "not found") || strings.Contains(msg, "filenotfound")
+}
+
+func vsphere_get_clouddrives(nodemap string, v *vsphereClient, results chan<- cloudDriveResult) {
+	defer wg.Done()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	defer cancel()
+
+	vm, err := v.vmFromNodemap(nodemap)
+	if err != nil {
+		results <- cloudDriveResult{err: err}
+		return
+	}
+	mobid := vm.Reference().Value
+
+	var props mo.VirtualMachine
+	if err := vm.Properties(ctx, vm.Reference(), []string{"config.hardware.device"}, &props); err != nil {
+		results <- cloudDriveResult{err: fmt.Errorf("vm %s: collect px cloud drive api error: %w", mobid, err)}
+		return
+	}
+	if props.Config == nil {
+		results <- cloudDriveResult{err: fmt.Errorf("vm %s: no config returned", mobid)}
+		return
+	}
+
+	re := regexp.MustCompile(`\[[A-Za-z0-9\-]*\]\ fcd\/[_a-f0-9/]*[0-9a-f]{32}\.vmdk`)
+
+	var found []Vsphere_Px_Clouddrive
+	devices := object.VirtualDeviceList(props.Config.Hardware.Device)
+	for _, d := range devices.SelectByType((*types.VirtualDisk)(nil)) {
+		disk := d.(*types.VirtualDisk)
+
+		fileBacking, ok := disk.Backing.(types.BaseVirtualDeviceFileBackingInfo)
+		if !ok {
+			continue
+		}
+		vmdk := fileBacking.GetVirtualDeviceFileBackingInfo().FileName
+		if !re.MatchString(vmdk) {
+			continue
+		}
+
+		// format "[datastore] path/filename.vmdk"
+		var dp object.DatastorePath
+		if !dp.FromString(vmdk) {
+			results <- cloudDriveResult{err: fmt.Errorf("vm %s: invalid vmdk disk format: %s", mobid, vmdk)}
+			return
+		}
+		lastDotIdx := strings.LastIndex(dp.Path, ".")
+		if lastDotIdx == -1 {
+			results <- cloudDriveResult{err: fmt.Errorf("vm %s: invalid vmdk disk format: missing file extension", mobid)}
+			return
+		}
+
+		found = append(found, Vsphere_Px_Clouddrive{
+			mobid:     mobid,
+			device:    d,
+			datastore: dp.Datastore,
+			path:      dp.Path[:lastDotIdx],
+			extension: dp.Path[lastDotIdx+1:],
+		})
+	}
+	results <- cloudDriveResult{drives: found}
+}
+
+func vsphere_get_vm_powerstate(mobid string, v *vsphereClient) (powerstate string, err error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	vm, err := v.vmFromNodemap(mobid)
+	if err != nil {
+		return "ERROR", err
+	}
+	state, err := vm.PowerState(ctx)
+	if err != nil {
+		return "ERROR", fmt.Errorf("Power State API request failed: %w", err)
+	}
+	return string(state), nil // poweredOn | poweredOff | suspended
+}
+
+func vsphere_poweroff_wait(nodemap string, v *vsphereClient) {
+	defer wg.Done()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
+	defer cancel()
+
+	vm, err := v.vmFromNodemap(nodemap)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	mobid := vm.Reference().Value
+
+	// SOAP raises InvalidPowerState if the VM is already off, so check first
+	state, err := vm.PowerState(ctx)
+	if err != nil {
+		fmt.Printf("VM %s: cannot get power state: %v\n", mobid, err)
+		return
+	}
+	if state == types.VirtualMachinePowerStatePoweredOff {
+		fmt.Printf("  Info: VM %s already powered off\n", mobid)
+		return
+	}
+
+	task, err := vm.PowerOff(ctx)
+	if err != nil {
+		fmt.Printf("VM Poweroff failed for %s: %v\n", mobid, err)
+		return
+	}
+	// task.Wait blocks until the power-off task has finished
+	if err := task.Wait(ctx); err != nil {
+		fmt.Printf("VM Poweroff failed for %s: %v\n", mobid, err)
+	}
+}
+
+// ---------------------------------------------------------------------------
+// prepare destroy
+// ---------------------------------------------------------------------------
 
 func vsphere_prepare_destroy(config *Config) error {
-	vrest := NewVsphereRestClient(config.Vsphere_Host, config.Vsphere_User, config.Vsphere_Password)
-	err := vrest.Login()
-	defer vrest.Logout()
-
-	if err != nil {
+	vrest := NewVsphereClient(config.Vsphere_Host, config.Vsphere_User, config.Vsphere_Password)
+	if err := vrest.Login(); err != nil {
 		return fmt.Errorf("prepare destroy: vSphere Login Failed")
 	}
+	defer vrest.Logout()
 
 	clusters, _ := strconv.Atoi(config.Clusters)
 	nodes, _ := strconv.Atoi(config.Nodes)
 
 	fmt.Printf("collecting px clouddrives\n")
-	var clouddrives []Vsphere_Px_Clouddrive
+	results := make(chan cloudDriveResult)
+
 	for i := 1; i <= clusters; i++ {
 		wg.Add(1)
-		go vsphere_get_clouddrives(config.Vsphere_Nodemap[fmt.Sprintf("%s-master-%v", config.Name, i)], &vrest, &clouddrives)
+		go vsphere_get_clouddrives(config.Vsphere_Nodemap[fmt.Sprintf("%s-master-%v", config.Name, i)], vrest, results)
 
 		for j := 1; j <= nodes; j++ {
 			wg.Add(1)
-			go vsphere_get_clouddrives(config.Vsphere_Nodemap[fmt.Sprintf("%s-node-%v-%v", config.Name, i, j)], &vrest, &clouddrives)
+			go vsphere_get_clouddrives(config.Vsphere_Nodemap[fmt.Sprintf("%s-node-%v-%v", config.Name, i, j)], vrest, results)
 		}
 	}
-	wg.Wait()
+	go func() {
+		wg.Wait()
+		close(results)
+	}()
+	// single consumer: the only place the slice is modified
+	var clouddrives []Vsphere_Px_Clouddrive
+	var errs []error
+	for r := range results {
+		if r.err != nil {
+			errs = append(errs, r.err)
+			continue
+		}
+		clouddrives = append(clouddrives, r.drives...)
+	}
+
+	if len(errs) > 0 {
+		return fmt.Errorf("collecting clouddrives failed: %w", errors.Join(errs...))
+	}
+
 	fmt.Printf("  found %v clouddrives \n", len(clouddrives))
 	fmt.Printf("clouddrive collection finished\n\n")
 
-	if len(clouddrives) > 0 {
-		fmt.Printf("waiting to power off VMs\n")
-		for i := 1; i <= clusters; i++ {
-			wg.Add(1)
-			go vsphere_poweroff_wait(config.Vsphere_Nodemap[fmt.Sprintf("%s-master-%v", config.Name, i)], &vrest)
+	if len(clouddrives) == 0 {
+		return nil
+	}
 
-			for j := 1; j <= nodes; j++ {
-				wg.Add(1)
-				go vsphere_poweroff_wait(config.Vsphere_Nodemap[fmt.Sprintf("%s-node-%v-%v", config.Name, i, j)], &vrest)
-			}
-		}
-		wg.Wait()
-		fmt.Printf("VM poweroff finished\n\n")
-		fmt.Printf("disconnecting & deleting clouddrives \n")
-		for _, val := range clouddrives {
+	fmt.Printf("waiting to power off VMs\n")
+	for i := 1; i <= clusters; i++ {
+		wg.Add(1)
+		go vsphere_poweroff_wait(config.Vsphere_Nodemap[fmt.Sprintf("%s-master-%v", config.Name, i)], vrest)
+
+		for j := 1; j <= nodes; j++ {
 			wg.Add(1)
-			go vsphere_delete_clouddrive(val, config.Vsphere_Datacenter, &vrest)
+			go vsphere_poweroff_wait(config.Vsphere_Nodemap[fmt.Sprintf("%s-node-%v-%v", config.Name, i, j)], vrest)
 		}
-		wg.Wait()
-		fmt.Printf("disconnect & delete clouddrives finished \n\n")
+	}
+	wg.Wait()
+	fmt.Printf("VM poweroff finished\n\n")
+	fmt.Printf("disconnecting & deleting clouddrives \n")
+
+	ctx := context.Background()
+	httpconfig := RetryConfig{
+		MaxRetries: 10,
+		BaseDelay:  500 * time.Millisecond,
+	}
+
+	// datacenter is required by the FileManager
+	finder := find.NewFinder(vrest.client.Client, true)
+	dc, err := finder.Datacenter(ctx, config.Vsphere_Datacenter)
+	if err != nil {
+		return fmt.Errorf("prepare destroy: datacenter lookup failed: %w", err)
+	}
+	fm := object.NewFileManager(vrest.client.Client)
+
+	deleteDatastoreFile := func(name string) error {
+		return retryWithBackoff(ctx, httpconfig, func(c context.Context) error {
+			task, err := fm.DeleteDatastoreFile(c, name, dc)
+			if err != nil {
+				return err
+			}
+			err = task.Wait(c)
+			if isNotFound(err) {
+				return nil // already gone
+			}
+			return err
+		})
+	}
+
+	for _, val := range clouddrives {
+		fmt.Printf("  Disconnect & Delete: %s[-flat].%s\n", val.path, val.extension)
+
+		vm := object.NewVirtualMachine(vrest.client.Client, types.ManagedObjectReference{Type: "VirtualMachine", Value: val.mobid})
+
+		// detach disk from VM, keepFiles=true leaves the vmdk on the datastore
+		err := retryWithBackoff(ctx, httpconfig, func(c context.Context) error {
+			return vm.RemoveDevice(c, true, val.device)
+		})
+		if err != nil {
+			fmt.Printf("  Disk disconnect failed: %v\n", err)
+		}
+
+		// delete descriptor (.vmdk) and extent (-flat.vmdk)
+		err = deleteDatastoreFile(fmt.Sprintf("[%s] %s.%s", val.datastore, val.path, val.extension))
+		if err != nil {
+			fmt.Printf("    Disk delete failed: %v\n", err)
+		}
+		err = deleteDatastoreFile(fmt.Sprintf("[%s] %s-flat.%s", val.datastore, val.path, val.extension))
+		if err != nil {
+			fmt.Printf("    Disk delete failed: %v\n", err)
+		}
+	}
+	fmt.Printf("disconnect & delete clouddrives finished \n\n")
+
+	seen := make(map[string]struct{})
+
+	fmt.Printf("Deleting %s /fcd/[subdirectories]\n", config.Vsphere_Datastore)
+	for _, cd := range clouddrives {
+		idx := strings.Index(cd.path, "fcd/")
+		if idx == -1 {
+			continue
+		}
+		// need another path component after "fcd/"
+		if !strings.Contains(cd.path[idx+len("fcd/"):], "/") {
+			continue
+		}
+		dir := path.Dir(cd.path) // e.g. "fcd/ab/cd"
+		if _, ok := seen[dir]; ok {
+			continue
+		}
+		seen[dir] = struct{}{}
+		fmt.Printf(" deleting path %s\n", dir)
+		if err := deleteDatastoreFile(fmt.Sprintf("[%s] %s", config.Vsphere_Datastore, dir)); err != nil {
+			fmt.Printf("    Disk delete failed: %v\n", err)
+		}
 	}
 	return nil
 }
+
+// ---------------------------------------------------------------------------
+// template import
+// ---------------------------------------------------------------------------
 
 func vsphere_init() {
 	var govc_opts []string
@@ -731,8 +721,9 @@ func vsphere_init() {
 		return
 	}
 
+	// --- OVA import: still done with govc (OVF import lives in the govc CLI, not in govmomi's public API)
 	govc_opts = append(govc_opts, fmt.Sprintf("GOVC_URL=%s", config.Vsphere_Host))
-	govc_opts = append(govc_opts, fmt.Sprintf("GOVC_INSECURE=1"))
+	govc_opts = append(govc_opts, "GOVC_INSECURE=1")
 	govc_opts = append(govc_opts, fmt.Sprintf("GOVC_RESOURCE_POOL=%s", config.Vsphere_Resource_Pool))
 	govc_opts = append(govc_opts, fmt.Sprintf("GOVC_CLUSTER=%s", config.Vsphere_Compute_Resource))
 	govc_opts = append(govc_opts, fmt.Sprintf("GOVC_USERNAME=%s", config.Vsphere_User))
@@ -753,34 +744,54 @@ func vsphere_init() {
 		fmt.Println(Red + "ERROR importing px-deploy base template" + Reset)
 		return
 	}
+
+	// --- everything below uses the SOAP API
+	ctx := context.Background()
+	vrest := NewVsphereClient(config.Vsphere_Host, config.Vsphere_User, config.Vsphere_Password)
+	if err := vrest.Login(); err != nil {
+		fmt.Println(Red + "ERROR creating vsphere session" + Reset)
+		return
+	}
+	defer vrest.Logout()
+
+	finder := find.NewFinder(vrest.client.Client, true)
+	dc, err := finder.Datacenter(ctx, config.Vsphere_Datacenter)
+	if err != nil {
+		fmt.Printf("%sERROR finding datacenter: %v%s\n", Red, err, Reset)
+		return
+	}
+	finder.SetDatacenter(dc)
+
 	fmt.Printf("Removing old template VM %s\n", config.Vsphere_Template)
-	cmd = exec.Command("govc", "vm.destroy", vsphere_template_base)
-	cmd.Env = os.Environ()
-	cmd.Env = append(cmd.Env, govc_opts...)
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	err = cmd.Run()
+	if oldVm, err := finder.VirtualMachine(ctx, config.Vsphere_Template); err != nil {
+		fmt.Printf("  (no old template found: %v)\n", err)
+	} else {
+		task, err := oldVm.Destroy(ctx)
+		if err == nil {
+			err = task.Wait(ctx)
+		}
+		if err != nil {
+			fmt.Printf("  could not remove old template: %v\n", err)
+		}
+	}
 
 	fmt.Printf("Renaming new template VM to %s\n", config.Vsphere_Template)
-	cmd = exec.Command("govc", "vm.change", "-vm="+vsphere_template_base+"_tmp", "-name="+vsphere_template_base)
-	cmd.Env = os.Environ()
-	cmd.Env = append(cmd.Env, govc_opts...)
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	err = cmd.Run()
+	tmpVm, err := finder.VirtualMachine(ctx, path.Join(vsphere_template_dir, vsphere_template_base+"_tmp"))
+	if err != nil {
+		fmt.Println(Red + "ERROR renaming base template" + Reset)
+		return
+	}
+	task, err := tmpVm.Rename(ctx, vsphere_template_base)
+	if err == nil {
+		err = task.Wait(ctx)
+	}
 	if err != nil {
 		fmt.Println(Red + "ERROR renaming base template" + Reset)
 		return
 	}
 
 	fmt.Printf("Converting base template VM %s to vSphere template\n", config.Vsphere_Template)
-	cmd = exec.Command("govc", "vm.markastemplate", vsphere_template_base)
-	cmd.Env = os.Environ()
-	cmd.Env = append(cmd.Env, govc_opts...)
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	err = cmd.Run()
-	if err != nil {
+	if err := tmpVm.MarkAsTemplate(ctx); err != nil {
 		fmt.Println(Red + "ERROR migrating base image to template" + Reset)
 		return
 	}
