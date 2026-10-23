@@ -1,6 +1,7 @@
-kubectl create ns garage
-kubectl create secret -n garage generic garage-rpc-secret --type=Opaque --from-literal rpcSecret="$(openssl rand -hex 32)"
-kubectl apply -f /assets/garage/garage.yaml
+RPCSECRET=$(openssl rand -hex 32)
+ACCESSKEY=$(openssl rand -hex 10)
+SECRETKEY=$(openssl rand -hex 18)
+sed -e "s/__ACCESSKEY__/$ACCESSKEY/" -e "s/__SECRETKEY__/$SECRETKEY/" -e "s/__RPCSECRET__/$RPCSECRET/" /assets/garage/garage.yaml | kubectl apply -f -
 
 # DOCS
 # https://garagehq.deuxfleurs.fr/documentation/quick-start/

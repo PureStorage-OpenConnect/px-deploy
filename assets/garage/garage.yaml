@@ -1,4 +1,9 @@
 apiVersion: v1
+kind: Namespace
+metadata:
+  name: garage
+---
+apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: garage
@@ -45,8 +50,7 @@ data:
     consistency_mode = "consistent"
     compression_level = 1
     rpc_bind_addr = "[::]:3901"
-    # rpc_secret will be populated by the init container from a k8s secret object
-    rpc_secret = "__RPC_SECRET_REPLACE__"
+    rpc_secret = "__RPCSECRET__"
     bootstrap_peers = [
     ]
     [kubernetes_discovery]
@@ -138,11 +142,11 @@ spec:
         - /garage
         env:
         - name: GARAGE_DEFAULT_ACCESS_KEY
-          value: "miniominio"
+          value: "__ACCESSKEY__"
         - name: GARAGE_DEFAULT_SECRET_KEY
-          value: "minio1234minio1234"
+          value: "__SECRETKEY__"
         - name: GARAGE_DEFAULT_BUCKET
-          value: "default"
+          value: "portworx"
         image: dxflrs/amd64_garage:v2.4.1
         imagePullPolicy: IfNotPresent
         name: garage
@@ -173,34 +177,6 @@ spec:
           name: etc
           subPath: garage.toml
       dnsPolicy: ClusterFirst
-      initContainers:
-      - command:
-        - sh
-        - -c
-        - sed "s/__RPC_SECRET_REPLACE__/$RPC_SECRET/" /mnt/garage.toml > /mnt/etc/garage.toml
-        env:
-        - name: RPC_SECRET
-          valueFrom:
-            secretKeyRef:
-              key: rpcSecret
-              name: garage-rpc-secret
-        image: busybox:stable
-        imagePullPolicy: IfNotPresent
-        name: garage-init
-        resources: {}
-        securityContext:
-          capabilities:
-            drop:
-            - ALL
-          readOnlyRootFilesystem: true
-        terminationMessagePath: /dev/termination-log
-        terminationMessagePolicy: File
-        volumeMounts:
-        - mountPath: /mnt/garage.toml
-          name: configmap
-          subPath: garage.toml
-        - mountPath: /mnt/etc
-          name: etc
       restartPolicy: Always
       schedulerName: default-scheduler
       securityContext:
@@ -216,8 +192,6 @@ spec:
       - configMap:
           defaultMode: 420
           name: garage-config
-        name: configmap
-      - emptyDir: {}
         name: etc
   updateStrategy:
     rollingUpdate:
