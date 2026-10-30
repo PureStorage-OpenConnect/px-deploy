@@ -1,24 +1,32 @@
+# 6.8.1
+## Improvements
+* re-worked vSphere clouddrive handling
+  
+## Fixes
+* mitigate CVE-2026-98432 using nftfilter rule
+
 # 6.8
-##Improvements
+## Improvements
 * OCP-V templates are now using nested virtualziation on AWS VMs (significant cost reduction)
 * Grafana has now deployment individual password set
 * Portworx Backup Grafana Metrics integrated
 * PX Backup Version 3.1.1
 * PX Enterprise 3.7.0
 * new px2 template using StoreV2
-##Fixes
+
+## Fixes
 * fix minio
 * fix node join race condition
 
 # 6.7.1
-##Fixes
+## Fixes
 * add runc package for k8s setup
 
 # 6.7
-##Fixes
+## Fixes
 * fix & update grafana setup on k8s and ocp4
 
-##Improvements
+## Improvements
 * PX Ent 3.6
 * PXB 2.11
 * update OCP4,GKE,EKS,AKS
@@ -28,25 +36,25 @@
 * run predelete scripts by default
 
 # 6.6.1
-##Fixes
+## Fixes
 * fix vSphere issue when one or more nodes is slow to provision
 * provision worker nodes by default rather than just k8s
 
-##Improvements
+## Improvements
 * validate metro-dr on ocp4
 * remove stop_after parameter
 * simplify aws-load-balancer-controller installation
 * simplify and speed up provisioning
 
 # 6.6
-##Important
+## Important
 * px-backup deployments are now using a random admin password shown on `px-deploy connect` login
 
-##Fixes
+## Fixes
 * px-deploy vsphere-init now using proper network settings
 * clusterpair (async-dr / migration) now works on vsphere deployments (still need aws credentials & DR_BUCKET)
 
-##Improvements
+## Improvements
 * PX Ent Version 3.5.1
 * PX-Backup 2.10.1
 * OCP 4.19.21
@@ -64,10 +72,10 @@
 
 # 6.5
 
-##Fixes
+## Fixes
  * Fix multiple AWS key warning display
 
-##Improvements
+## Improvements
  * PX Ent Version 3.4
  * OCP 4.19
  * PX-Backup 2.9.1
