@@ -74,3 +74,10 @@ spec:
   color: '#fff'
   backgroundColor: '$bgcolor'
 EOF
+
+# on aws ec2 install aws-load-balancer-controller and external-dns
+if [ $cloud = aws ]; then
+    source /assets/aws-load-balancer-controller.sh
+    echo "Applying external-dns for domain $ocp4_domain"
+    sed s/DOMAIN/$ocp4_domain/g /assets/external-dns.tmpl | kubectl apply -f -
+fi
