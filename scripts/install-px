@@ -11,7 +11,12 @@
 
 # If you select cloud=vsphere, clouddrives will be provisioned from vsphere_disks
 
+STCYAML=".clusterName = \"px-deploy-$cluster\" | .monitoring.telemetry.enabled = false | .imagePullPolicy = \"IfNotPresent\" | .imageVersion = \"$px_version\""
+#STCYAML+=" | .miscArgs = \"-rt_opts small_conf=1\" | .storeV2Install = true"
+STCYAML+=" | .storeV2Install = true"
+
 kubectl create namespace portworx
+
 if [ $cloud = vsphere ]; then
   VSPHERE_USER=$(base64 <<<$vsphere_user)
   VSPHERE_PASSWORD=$(base64 <<<$vsphere_password)
@@ -27,13 +32,14 @@ data:
   VSPHERE_PASSWORD: $VSPHERE_PASSWORD
 EOF
   for i in $vsphere_disks; do
-    vsphere_cd="$vsphere_cd%22type=thin,size=$i%22,"
+    clouddrives+="type=thin,size=$i;"
   done
-  vsphere_cd=${vsphere_cd::-1}
-  vsphere_suffix="vsp=true&ds=$vsphere_datastore&vc=$vsphere_host&s=$vsphere_cd&mz=0"
+  clouddrives=${clouddrives::-1}
+  STCYAML+=" | .provider = \"vsphere\" | .drives = \"$clouddrives\" | .envVars = \"VSPHERE_INSECURE=true;VSPHERE_VCENTER=$vsphere_host;VSPHERE_VCENTER_PORT=443;VSPHERE_DATASTORE_PREFIX=$vsphere_datastore;VSPHERE_INSTALL_MODE=shared\""
 fi
 
 k8s_version=$((kubectl version --short 2>&1 || kubectl version) | awk -Fv '/Server Version: / {print $3}')
+
 url="https://install.portworx.com/$px_version?kbver=$k8s_version&b=true&c=px-deploy-$cluster&stork=true&st=k8s&lh=true&mon=true&tel=false&operator=true"
 [ -e /usr/bin/oc ] && url="$url&osft=true"
 if [ "$cloud_drive" ]; then
@@ -47,9 +53,9 @@ if [ "$cloud_drive" ]; then
 fi
 
 if [ "$promop" = false ] || [ "$platform" = ocp4 ]; then
-  url="$url&promop=false&mon=true"
+  STCYAML+=" | .monitoring.prometheus.enabled = false"
 else 
-  url="$url&promop=true&mon=true"
+  STCYAML+=" | .monitoring.prometheus.enabled = true"
 fi
 
 [ "$journal" ] && url="$url&j=$journal"
@@ -61,6 +67,7 @@ fi
 [ "$etcd" = EXTERNAL ] && url="$url&k=etcd:http://$(grep master-1 /etc/hosts | cut -d\  -f1):2382"
 
 if [ "$platform" = ocp4 ]; then
+  STCYAML=".deployOperator = false"
   oc apply -f - <<EOF
 apiVersion: operators.coreos.com/v1
 kind: OperatorGroup
@@ -99,12 +106,12 @@ EOF
   done
 fi
 
-if [ "$platform" != ocp4 ]; then
-  curl -sk "https://install.portworx.com/$px_version?comp=pxoperator&kbver=$k8s_version" | sed 's/kube-system/portworx/g' | sed 's/imagePullPolicy: Always/imagePullPolicy: IfNotPresent/g' | kubectl apply -f -
-  while ! kubectl wait --for=condition=ready pod -lname=portworx-operator -n portworx; do
-    sleep 2
-  done
-fi
+#if [ "$platform" != ocp4 ]; then
+#  curl -sk "https://install.portworx.com/$px_version?comp=pxoperator&kbver=$k8s_version" | sed 's/kube-system/portworx/g' | sed 's/imagePullPolicy: Always/imagePullPolicy: IfNotPresent/g' | kubectl apply -f -
+#  while ! kubectl wait --for=condition=ready pod -lname=portworx-operator -n portworx; do
+#    sleep 2
+#  done
+#fi
 
 if [ "$secrets" = vault ]; then
   bash /assets/install-vault.sh
@@ -123,14 +130,19 @@ sed -i '/annotations:/a\    portworx.io/health-check: "skip"' /tmp/px.yml
 [ -f "/tmp/metro" ] && clusterdomain=$(cat /tmp/metro) && sed -i '/  annotations:/a\ \ \ \ '"$clusterdomain"'' /tmp/px.yml
 
 # check if CRDs are created
-while ! kubectl wait --for condition=established crd/storageclusters.core.libopenstorage.org; do
-    sleep 2
-done
-while ! kubectl wait --for condition=established crd/storagenodes.core.libopenstorage.org; do
-    sleep 2
-done
+#while ! kubectl wait --for condition=established crd/storageclusters.core.libopenstorage.org; do
+#    sleep 2
+#done
+#while ! kubectl wait --for condition=established crd/storagenodes.core.libopenstorage.org; do
+#    sleep 2
+#done
 
-kubectl apply -f /tmp/px.yml
+echo $STCYAML > /tmp/STCYAML.txt
+yq --null-input "$STCYAML" > /tmp/values.yaml
+
+helm install --wait portworx -f /tmp/values.yaml /assets/px-helm/portworx
+
+#kubectl apply -f /tmp/px.yml
 
 # Install px cli
 curl -L -o /tmp/pxcli.tgz https://mirrors.portworx.com/packages/px-cli/v1.5.0/px-v1.5.0.linux.amd64.tar.gz                        

@@ -9,7 +9,7 @@ quiet: false
 tags: "project=pxdeploy"
 
 aws_region: eu-west-1
-aws_type: t3.large
+aws_type: t3a.xlarge
 aws_ebs: "gp2:50"
 aws_access_key_id: ""
 aws_secret_access_key: "" 
@@ -47,10 +47,10 @@ vsphere_user: ""
 vsphere_password: ""
 vsphere_template: "pxdeploy-template"
 vsphere_datastore: ""
-vsphere_disks: "64"
+vsphere_disks: "50 50 50 50"
 vsphere_network: ""
 vsphere_memory: 8
-vsphere_cpu: 2
+vsphere_cpu: 4
 vsphere_repo: "https://px-deploy.s3.eu-west-1.amazonaws.com/templates/"
 #vsphere_folder: ""
 
