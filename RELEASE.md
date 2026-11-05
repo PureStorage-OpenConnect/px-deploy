@@ -1,3 +1,8 @@
+# 6.8.2
+## Fixes
+* fix vsphere deployment issue
+* update grafana to 13.2
+
 # 6.8.1
 ## Improvements
 * re-worked vSphere clouddrive handling
