@@ -151,7 +151,7 @@ data:
   guacamole.properties: |
     guacd-hostname: guacd
     guacd-port: 4822
-
+    ban-max-invalid-attempts: 10000
     postgresql-hostname: postgres
     postgresql-port: 5432
     postgresql-database: guacamole_db
