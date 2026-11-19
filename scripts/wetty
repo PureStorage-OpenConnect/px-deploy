@@ -2,6 +2,16 @@ mkdir /etc/wetty
 rm -f /etc/securetty
 sed -i '/master-1/s/$/ px-training/' /etc/hosts
 kubectl rollout status deployment/aws-load-balancer-controller -n kube-system --timeout=300s
+while :; do
+  sleep 2
+  kubectl create service loadbalancer canary --tcp=80:8080 --dry-run=client -o yaml | kubectl annotate --local -f - service.beta.kubernetes.io/aws-load-balancer-type=external -o yaml | kubectl apply -f -
+  nlb=$(kubectl get svc canary -o jsonpath='{.spec.loadBalancerClass}{"\n"}')
+echo found $nlb
+kubectl get svc canary
+  kubectl delete service canary
+  [ "$nlb" = service.k8s.aws/nlb ] && break
+done
+[ "$platform" = "ocp4" ] && oc create ns wetty && oc adm policy add-scc-to-user hostnetwork-v2 -z default -n wetty
 sed "s/CERT/$training_cert/g; s/KEY/$training_key/g; s/NAME/$name/g; s/DOMAIN/$ocp4_domain/g;" /assets/wetty.tmpl | kubectl apply -f -
 
 TOKEN=$(curl -s -X PUT 'http://169.254.169.254/latest/api/token' -H 'X-aws-ec2-metadata-token-ttl-seconds: 120')
