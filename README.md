@@ -13,6 +13,7 @@ This will deploy one or more clusters in the cloud, with optional post-install t
  * EKS (only makes sense on AWS)
  * AKS (only makes sense on Azure)
  * GKE (only makes sense on GCP)
+ * Rancher (only on AWS at this time)
 
 ## Cloud
  * AWS
@@ -39,8 +40,9 @@ You will need to restart your shell.
 curl https://raw.githubusercontent.com/PureStorage-OpenConnect/px-deploy/master/install.sh | bash
 ```
 This will:
- * pull the Docker image from Github
+ * pull the Docker image for the current release from Github
  * create and populate `$HOME/.px-deploy`
+ * replace `infra`, `scripts`, `templates`, `assets` and `docs` in `$HOME/.px-deploy` with the release's copies (your previous copies are kept as `<name>.<timestamp>`)
  * provide instructions to configure `.bash_profile`/`.zshrc`
 
 It may take 5-10 minutes to complete, longer with a slow Internet connection.
@@ -70,7 +72,7 @@ Review the various cloud settings in `~/.px-deploy/defaults.yml`.
 * Please don't change the default scripts / templates as they will be overwritten during update. Feel free to create your own scripts / templates.
 
 * Your `defaults.yml` will no longer be replaced. After updating please check if the new release supports newer Kubernetes / Portworx versions and update it manually.
-* You'll find this information in `$HOME/.px-deploy/defaults.yml.VERSION`
+* You'll find this information in `$HOME/.px-deploy/versions.yml`
 
 * When updating from version < 5.0.0, please destroy all AWS / AWSTF Cloud based deployments in advance. Version 5 cannot destroy these deployments any longer.
 
@@ -93,7 +95,7 @@ Execute a command:
 px-deploy connect --name my-deployment "storkctl get clusterpair"
 ```
 
-Stop instances (to reduce AWS costs):
+Stop instances (to reduce AWS costs; AWS only, not for `ocp4` or `eks`):
 ```
 px-deploy stop --name my-deployment
 ```
@@ -160,14 +162,14 @@ The `defaults.yml` file sets a number of deployment variables:
  * `aws_access_key_id` - your AWS API access key
  * `aws_secret_access_key` - your AWS API secret access key
  * `eks_version` - EKS k8s Version
- * `cloud` - the cloud on which to deploy (aws, gcp, or vsphere)
+ * `cloud` - the cloud on which to deploy (aws, azure, gcp or vsphere)
  * `ssh_pub_key` - ssh public key which will be added for root access on each node
  * `clusters` - the number of clusters to deploy
  * `k8s_version` - the version of Kubernetes to deploy
  * `tags` - a list of tags to be applied to each node. This is a comma-separate list of name=value pairs, for example: `"Owner=Bob,Purpose=Demo"`
  * `nodes` - the number of worker nodes on each cluster
  * `lock` - prevents deployment from being deleted by `px-deploy destroy ...`. use `px-deploy unlock -n ...` to unlock 
- * `platform` - can be set to either k8s, none, ocp4, eks or gke
+ * `platform` - can be set to k8s, none, ocp4, rancher, eks, aks or gke (ocp4 and rancher only on AWS, gke only on GCP, aks only on Azure; eks only makes sense on AWS)
  * `azure_type` - the Azure machine type for each node
  * `azure_disks` - similar to aws_ebs, for example: `"Standard_LRS:49 Premium_LRS:50"` 
  * `azure_client_id` - Azure Client ID
@@ -261,7 +263,7 @@ px-deploy create -n foo -t px --cloud azure --platform aks -e cloud_drive="type%
 ```
 # Notes for AWS
 
-If you are using AWS and you have not accepted the Rocky Linux 8 terms, browse to https://aws.amazon.com/marketplace/pp/prodview-2otariyxb3mqu
+If you are using AWS, your account must be subscribed to the Rocky Linux 9 (Official) x86_64 image on AWS Marketplace. px-deploy uses `Rocky-9-EC2-Base-9.5-20241118.0` (see `terraform/aws/main.tf`).
 
 Edit your `defaults.yml` to set `aws_access_key_id` and `aws_secret_access_key`.
 
@@ -404,6 +406,8 @@ Before you can start deploying in vSphere, a local VM template must be installed
 $ px-deploy vsphere-init
 ```
 will read the vsphere variables from `defaults.yml` (please check in advance if they are correct) and provision a template at the path defined in `vsphere_template`.
+
+It can be faster to deploy the template from the vCenter UI instead: see [Manual creation of px-deploy vSphere template](docs/cloud/vsphere/README.md).
 
 # Known Issues 
 
