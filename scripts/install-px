@@ -13,7 +13,7 @@
 
 STCYAML=".clusterName = \"px-deploy-$cluster\" | .monitoring.telemetry.enabled = false | .imagePullPolicy = \"IfNotPresent\" | .imageVersion = \"$px_version\""
 #STCYAML+=" | .miscArgs = \"-rt_opts small_conf=1\" | .storeV2Install = true"
-STCYAML+=" | .storeV2Install = true"
+STCYAML+=" | .storeV2Install = true | .clusterAnnotations = \"portworx.io/preflight-check=true\" | .initialStorageNodes = 3"
 
 kubectl create namespace portworx
 
@@ -136,6 +136,8 @@ sed -i '/annotations:/a\    portworx.io/health-check: "skip"' /tmp/px.yml
 #while ! kubectl wait --for condition=established crd/storagenodes.core.libopenstorage.org; do
 #    sleep 2
 #done
+#sleep 60
+#kubectl label node portworx.io/provision-storage-node=unsafe --all --overwrite
 
 echo $STCYAML > /tmp/STCYAML.txt
 yq --null-input "$STCYAML" > /tmp/values.yaml
