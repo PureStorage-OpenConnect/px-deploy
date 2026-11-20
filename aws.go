@@ -211,7 +211,7 @@ func aws_load_config(config *Config) aws.Config {
 		awscfg.WithRegion(config.Aws_Region),
 		awscfg.WithCredentialsProvider(awscredentials.NewStaticCredentialsProvider(config.Aws_Access_Key_Id, config.Aws_Secret_Access_Key, "")))
 	if err != nil {
-		panic(fmt.Sprintf("failed loading config, %v \n", err))
+		cloud_fail("aws", "loading the AWS configuration", err)
 	}
 	return cfg
 }
@@ -350,7 +350,7 @@ func aws_get_node_ip(deployment string, node string) string {
 		awscfg.WithRegion(config.Aws_Region),
 		awscfg.WithCredentialsProvider(awscredentials.NewStaticCredentialsProvider(config.Aws_Access_Key_Id, config.Aws_Secret_Access_Key, "")))
 	if err != nil {
-		panic("aws configuration error, " + err.Error())
+		cloud_fail("aws", "loading the AWS configuration", err)
 	}
 
 	client := ec2.NewFromConfig(cfg)
@@ -381,7 +381,7 @@ func aws_get_node_ip(deployment string, node string) string {
 
 	if err != nil {
 		fmt.Println("Got an error retrieving information about your Amazon EC2 instances:")
-		panic("Error getting IP of instance:" + err.Error())
+		cloud_fail("aws", "looking up the address of "+node, err)
 	}
 
 	if len(instances.Reservations) == 1 {
