@@ -93,7 +93,7 @@ type Config struct {
 	Vsphere_Dns              string
 	Vsphere_Gw               string
 	Vsphere_Node_Ip          string
-	Vsphere_Nodemap          map[string]string
+	Vsphere_Nodemap          map[string]string `yaml:"vsphere_nodemap,omitempty"`
 	Scripts                  []string
 	Description              string
 	Env                      map[string]string
@@ -431,7 +431,7 @@ func main() {
 			}
 
 			for i := 1; i <= Clusters; i++ {
-				fmt.Printf(m[i])
+				fmt.Print(m[i])
 			}
 		},
 	}
