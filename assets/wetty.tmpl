@@ -58,7 +58,7 @@ spec:
         - "--base"
         - "/"
         - "--ssh-host"
-        - "px-training"
+        - "192.168.101.90"
         - "--force-ssh"
         - "--ssl-key"
         - "/etc/tls/tls.key"
@@ -89,6 +89,7 @@ metadata:
   namespace: wetty
   annotations:
     service.beta.kubernetes.io/aws-load-balancer-type: "external"
+    service.beta.kubernetes.io/aws-load-balancer-nlb-target-type: "ip"
     external-dns.alpha.kubernetes.io/hostname: NAME-wetty.DOMAIN
 spec:
   type: LoadBalancer

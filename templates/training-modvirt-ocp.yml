@@ -5,4 +5,4 @@ ocp4_version: 4.21.6
 scripts: ["install-awscli", "ocp-nested-virt"]
 cluster:
   - id: 1
-    scripts: ["wetty", "snoop", "training-modvirt-ocp-bastion", "install-virtctl"]
+    scripts: ["snoop", "training-modvirt-ocp-bastion", "install-virtctl", "wetty" ]
