@@ -2,19 +2,15 @@ dnf install -y kernel-devel sg3_utils device-mapper-multipath iscsi-initiator-ut
 ctr -n k8s.io images pull docker.io/$(curl -sk "https://install.portworx.com/$px_version?comp=pxoperator&kbver=$k8s_version" | awk '/image:/{print$2}') &
 ctr -n k8s.io images pull docker.io/portworx/px-enterprise:$px_version &
 ctr -n k8s.io images pull docker.io/portworx/oci-monitor:$px_version &
-while : ; do
-  echo Trying to get join from master-$cluster
-  command=$(ssh -oConnectTimeout=1 -oStrictHostKeyChecking=no master-$cluster kubeadm token create --print-join-command)
-  echo $command | grep -qE '[0-9a-f]{64}'
-  [ $? -eq 0 ] && break
-  sleep 5
+
+echo Trying to get join config from master-$cluster
+while ! scp master-$cluster:/root/.kube/nodeconfig.yaml /root/nodeconfig.yaml; do
+  echo Failed to copy nodeconfig.yaml, retrying...
+  sleep 2
 done
-while ! eval $command; do
-  echo Failed to execute join command, retrying...
-  sleep 1
-done
-wait
-# set role for this node
+kubeadm join --config /root/nodeconfig.yaml
+
+# set role for this node (as kubelets are not allowed to self-assign node-roles via JoinConfiguration)
 ssh -oConnectTimeout=1 -oStrictHostKeyChecking=no master-$cluster kubectl label node $(hostname) node-role.kubernetes.io/worker=worker
 
 # set providerID on AWS (needed for AWS ELB controller)

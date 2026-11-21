@@ -1,7 +1,26 @@
-kubeadm init --apiserver-advertise-address=$(hostname -i) --pod-network-cidr=10.244.0.0/16 --kubernetes-version $k8s_version
+CONTROL_PLANE_IP=$(hostname -i)
+kubeadm init --apiserver-advertise-address=$CONTROL_PLANE_IP --pod-network-cidr=10.244.0.0/16 --kubernetes-version $k8s_version
 mkdir /root/.kube
 cp /etc/kubernetes/admin.conf /root/.kube/config
-#
+
+# create JoinConfiguration which then gets pulled by the nodes
+CA_CERT_HASH=$(openssl x509 -in /etc/kubernetes/pki/ca.crt -noout -pubkey | openssl rsa -pubin -outform DER 2>/dev/null | sha256sum | cut -d' ' -f1)
+BOOTSTRAP_TOKEN=$(kubeadm token create)
+cat <<EOF >/root/.kube/nodeconfig.yaml
+apiVersion: kubeadm.k8s.io/v1beta4
+kind: JoinConfiguration
+discovery:
+  bootstrapToken:
+    apiServerEndpoint: $CONTROL_PLANE_IP:6443
+    token: $BOOTSTRAP_TOKEN
+    caCertHashes:
+      - sha256:$CA_CERT_HASH
+nodeRegistration:
+  kubeletExtraArgs:
+    - name: node-labels
+      value: "portworx.io/provision-storage-node=unsafe"
+EOF
+
 # wait for API server to come up
 sleep 5
 echo "Waiting on kube api"
