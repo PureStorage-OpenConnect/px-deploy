@@ -2,13 +2,13 @@
 #docker buildx create --use --platform=linux/arm64,linux/amd64 --name multi-platform-builder
 #docker buildx inspect --bootstrap
 #docker buildx build --platform=linux/arm64,linux/amd64 --push -t ghcr.io/danpaul81/px-deploy:dev .
-FROM --platform=$BUILDPLATFORM golang:1.25-alpine3.22 AS build
+FROM --platform=$BUILDPLATFORM golang:1.27-alpine3.24 AS build
 RUN mkdir -p /linux/amd64
 RUN mkdir -p /linux/arm64
-RUN wget -P / https://releases.hashicorp.com/terraform/1.9.8/terraform_1.9.8_linux_amd64.zip
-RUN wget -P / https://releases.hashicorp.com/terraform/1.9.8/terraform_1.9.8_linux_arm64.zip
-RUN unzip /terraform_1.9.8_linux_amd64.zip -d /linux/amd64
-RUN unzip /terraform_1.9.8_linux_arm64.zip -d /linux/arm64
+RUN wget -P / https://releases.hashicorp.com/terraform/1.17.2/terraform_1.17.2_linux_amd64.zip
+RUN wget -P / https://releases.hashicorp.com/terraform/1.17.2/terraform_1.17.2_linux_arm64.zip
+RUN unzip /terraform_1.17.2_linux_amd64.zip -d /linux/amd64
+RUN unzip /terraform_1.17.2_linux_arm64.zip -d /linux/arm64
 RUN wget -P / https://github.com/vmware/govmomi/releases/download/v0.55.2/govc_Linux_x86_64.tar.gz
 RUN wget -P / https://github.com/vmware/govmomi/releases/download/v0.55.2/govc_Linux_arm64.tar.gz
 RUN tar -xzf /govc_Linux_x86_64.tar.gz -C /linux/amd64
@@ -19,7 +19,7 @@ ARG TARGETOS TARGETARCH TARGETPLATFORM
 RUN cd /root/go/src/px-deploy; GOOS=$TARGETOS GOARCH=$TARGETARCH go build -o /$TARGETPLATFORM/px-deploy
 COPY terraform /px-deploy/terraform
 
-FROM --platform=$TARGETPLATFORM alpine:3.22
+FROM --platform=$TARGETPLATFORM alpine:3.24
 RUN apk add --no-cache openssh-client-default bash rsync
 RUN echo ServerAliveInterval 300 >/etc/ssh/ssh_config
 RUN echo ServerAliveCountMax 2 >>/etc/ssh/ssh_config
