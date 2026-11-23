@@ -33,6 +33,8 @@ import (
 	version_hashicorp "github.com/hashicorp/go-version"
 	"github.com/imdario/mergo"
 	"github.com/olekukonko/tablewriter"
+	"github.com/olekukonko/tablewriter/renderer"
+	"github.com/olekukonko/tablewriter/tw"
 	"github.com/spf13/cobra"
 )
 
@@ -2040,16 +2042,28 @@ func parse_yaml(filename string) Config {
 }
 
 func print_table(header []string, data [][]string) {
-	table := tablewriter.NewWriter(os.Stdout)
-	table.SetHeader(header)
-	table.SetHeaderAlignment(tablewriter.ALIGN_LEFT)
-	table.SetColWidth(80)
-	table.SetHeaderLine(false)
-	table.SetBorder(false)
-	table.SetTablePadding("  ")
-	table.SetNoWhiteSpace(true)
-	table.AppendBulk(data)
-	table.Render()
+	// tablewriter v1.x API: borderless, left-aligned, no header line
+	table := tablewriter.NewTable(os.Stdout,
+		tablewriter.WithRenderer(renderer.NewBlueprint(tw.Rendition{
+			Borders:  tw.BorderNone,
+			Settings: tw.Settings{Separators: tw.SeparatorsNone, Lines: tw.LinesNone},
+		})),
+		tablewriter.WithHeaderAlignment(tw.AlignLeft),
+		tablewriter.WithRowAlignment(tw.AlignLeft),
+		tablewriter.WithHeaderAutoFormat(tw.Off),
+		tablewriter.WithRowMaxWidth(80),
+	)
+	upper := make([]string, len(header))
+	for i, h := range header {
+		upper[i] = strings.ToUpper(h) // v0 upper-cased headers automatically; v1 does not
+	}
+	table.Header(upper)
+	if err := table.Bulk(data); err != nil {
+		die("Cannot build table: " + err.Error())
+	}
+	if err := table.Render(); err != nil {
+		die("Cannot render table: " + err.Error())
+	}
 }
 
 func write_tf_file(deployment string, filename string, data []string) {
