@@ -19,7 +19,7 @@ ARG TARGETOS TARGETARCH TARGETPLATFORM
 RUN cd /root/go/src/px-deploy; GOOS=$TARGETOS GOARCH=$TARGETARCH go build -o /$TARGETPLATFORM/px-deploy
 COPY terraform /px-deploy/terraform
 
-FROM --platform=$TARGETPLATFORM alpine:3.24
+FROM alpine:3.24
 RUN apk add --no-cache openssh-client-default bash rsync
 RUN echo ServerAliveInterval 300 >/etc/ssh/ssh_config
 RUN echo ServerAliveCountMax 2 >>/etc/ssh/ssh_config
