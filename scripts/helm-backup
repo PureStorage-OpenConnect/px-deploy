@@ -4,7 +4,7 @@ if [ -v pxb_version ]; then
   VERSION=$pxb_version
 else
   # ensure to update px cli to supported version
-  VERSION=3.1.1
+  VERSION=3.2.1
 fi
 
 kubectl apply -f /assets/helm-backup/namespace.yml
