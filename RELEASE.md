@@ -1,3 +1,7 @@
+# 6.8.3
+## Fixes
+* update PXE / PXB / OCP Version to address security issues
+
 # 6.8.2
 ## Fixes
 * fix vsphere deployment issue
