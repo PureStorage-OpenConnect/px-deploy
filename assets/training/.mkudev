@@ -1,0 +1,18 @@
+cd /sys/block
+disks=*
+for d in $disks; do
+  ls $d/*/partition >&/dev/null
+  [ $? -ne 0 ] || continue
+  size=$[$(cat $d/size)/2097152]
+  id=$(udevadm info --query=property --name=/dev/$d | grep ID_SERIAL_SHORT | cut -f 2 -d =)
+  if [ $size -eq 64 ]; then
+    echo 'SUBSYSTEM=="block", ENV{DEVTYPE}=="disk",      ENV{ID_SERIAL_SHORT}=="'$id'", SYMLINK+="sda"' >>/etc/udev/rules.d/99-ebs.rules
+    echo 'SUBSYSTEM=="block", ENV{DEVTYPE}=="partition", ENV{ID_SERIAL_SHORT}=="'$id'", SYMLINK+="sda%n"' >>/etc/udev/rules.d/99-ebs.rules
+  else
+    echo 'SUBSYSTEM=="block", ENV{DEVTYPE}=="disk",      ENV{ID_SERIAL_SHORT}=="'$id'", SYMLINK+="sdb"' >>/etc/udev/rules.d/99-ebs.rules
+    echo 'SUBSYSTEM=="block", ENV{DEVTYPE}=="partition", ENV{ID_SERIAL_SHORT}=="'$id'", SYMLINK+="sdb%n"' >>/etc/udev/rules.d/99-ebs.rules
+  fi
+done
+
+udevadm control --reload
+udevadm trigger --subsystem-match=block --action=add

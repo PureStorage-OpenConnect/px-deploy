@@ -1,5 +1,5 @@
 # Configure user directories
-mv /assets/training /etc/skel
+cp -r /assets/training /etc/skel
 mkdir /etc/skel/.kube
 cat <<EOF >>/etc/skel/.bashrc
 alias k=kubectl
@@ -7,7 +7,7 @@ complete -F __start_kubectl k
 PS1='\[\e[0;33m\][\u@px-training \W]\$ \[\e[m\]'
 EOF
 curl -o /etc/skel/training/03-Installation/px-operator.yml "https://install.portworx.com/$px_version?comp=pxoperator&kbver=$k8s_version&ns=portworx"
-curl "https://install.portworx.com/$px_version?operator=true&mc=false&kbver=$k8s_version&ns=portworx&b=true&c=px-cluster&stork=true&csi=true&mon=true&tel=true&st=k8s&promop=true" | grep -v install.portworx.com >/etc/skel/training/03-Installation/px.yml
+curl "https://install.portworx.com/$px_version?operator=true&mc=false&kbver=$k8s_version&ns=portworx&b=true&kvdbtls=true&certmgr=true&dmthin=true&md=%2Fdev%2Fsda&s=%22%2Fdev%2Fsdb%22&j=auto&small_conf=1&c=px-cluster&stork=true&csi=true&mon=true&aut=true&tel=true&st=k8s&promop=true" | grep -v install.portworx.com >/etc/skel/training/03-Installation/px.yml
 
 # Create training users and patch yaml
 for i in $(seq 1 $clusters); do

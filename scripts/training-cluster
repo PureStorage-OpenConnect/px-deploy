@@ -6,7 +6,9 @@ for i in $(seq 1 $nodes); do
     [ $? -eq 22 ] && break
     sleep 2
   done
+  while :; do
+    cat /assets/training/.mkudev | ssh node-$cluster-$i
+    [ $? -eq 0 ] && break
+    sleep 2
+  done
 done
-
-# Provision MinIO
-kubectl apply -f /assets/minio/minio-deployment.yml
