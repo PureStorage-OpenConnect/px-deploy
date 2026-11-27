@@ -60,27 +60,27 @@ func gcp_detach_delete_wait_clouddrive(instance string, disk string, config *Con
 	defer wg.Done()
 	computeService, err := gcp_compute_connect(config.Gcp_Auth_Json)
 	if err != nil {
-		panic(err.Error())
+		cloud_fail("gcp", "detaching or deleting a Portworx cloud drive", err)
 	}
 
 	detachresult, err := computeService.Instances.DetachDisk(config.Gcp_Project, fmt.Sprintf("%s-%s", config.Gcp_Region, config.Gcp_Zone), instance, disk).Do()
 	if err != nil {
-		panic(err.Error())
+		cloud_fail("gcp", "detaching or deleting a Portworx cloud drive", err)
 	}
 
 	err = gcp_waiter(config, computeService, detachresult.Name)
 	if err != nil {
-		panic(err.Error())
+		cloud_fail("gcp", "detaching or deleting a Portworx cloud drive", err)
 	}
 
 	deletediskresult, err := computeService.Disks.Delete(config.Gcp_Project, fmt.Sprintf("%s-%s", config.Gcp_Region, config.Gcp_Zone), disk).Do()
 	if err != nil {
-		panic(err.Error())
+		cloud_fail("gcp", "detaching or deleting a Portworx cloud drive", err)
 	}
 
 	err = gcp_waiter(config, computeService, deletediskresult.Name)
 	if err != nil {
-		panic(err.Error())
+		cloud_fail("gcp", "detaching or deleting a Portworx cloud drive", err)
 	}
 }
 
@@ -88,17 +88,17 @@ func gcp_delete_wait_clouddrive(disk string, config *Config, wg *sync.WaitGroup)
 	defer wg.Done()
 	computeService, err := gcp_compute_connect(config.Gcp_Auth_Json)
 	if err != nil {
-		panic(err.Error())
+		cloud_fail("gcp", "deleting a Portworx cloud drive", err)
 	}
 
 	deletediskresult, err := computeService.Disks.Delete(config.Gcp_Project, fmt.Sprintf("%s-%s", config.Gcp_Region, config.Gcp_Zone), disk).Do()
 	if err != nil {
-		panic(err.Error())
+		cloud_fail("gcp", "deleting a Portworx cloud drive", err)
 	}
 
 	err = gcp_waiter(config, computeService, deletediskresult.Name)
 	if err != nil {
-		panic(err.Error())
+		cloud_fail("gcp", "deleting a Portworx cloud drive", err)
 	}
 }
 
@@ -108,17 +108,17 @@ func gcp_stop_wait_instance(instance string, config *Config, wg *sync.WaitGroup)
 
 	computeService, err := gcp_compute_connect(config.Gcp_Auth_Json)
 	if err != nil {
-		panic(err.Error())
+		cloud_fail("gcp", "stopping an instance", err)
 	}
 
 	stopresult, err := computeService.Instances.Stop(config.Gcp_Project, fmt.Sprintf("%s-%s", config.Gcp_Region, config.Gcp_Zone), instance).Do()
 	if err != nil {
-		panic(err.Error())
+		cloud_fail("gcp", "stopping an instance", err)
 	}
 
 	err = gcp_waiter(config, computeService, stopresult.Name)
 	if err != nil {
-		panic(err.Error())
+		cloud_fail("gcp", "stopping an instance", err)
 	}
 }
 
@@ -145,19 +145,19 @@ func gcp_delete_wait_nodepools(config *Config, cluster string, nodepool string, 
 	defer wg.Done()
 	containerService, err := gcp_container_connect(config.Gcp_Auth_Json)
 	if err != nil {
-		panic(err.Error())
+		cloud_fail("gcp", "deleting a GKE node pool", err)
 	}
 
 	deletepoolresult, err := containerService.Projects.Zones.Clusters.NodePools.Delete(config.Gcp_Project, fmt.Sprintf("%s-%s", config.Gcp_Region, config.Gcp_Zone), cluster, nodepool).Do()
 	if err != nil {
-		panic(err.Error())
+		cloud_fail("gcp", "deleting a GKE node pool", err)
 	}
 
 	deleted := false
 	for !deleted {
 		deletestatus, err := containerService.Projects.Zones.Operations.Get(config.Gcp_Project, fmt.Sprintf("%s-%s", config.Gcp_Region, config.Gcp_Zone), deletepoolresult.Name).Do()
 		if err != nil {
-			panic(err.Error())
+			cloud_fail("gcp", "deleting a GKE node pool", err)
 		}
 		switch deletestatus.Status {
 		case "DONE":
@@ -176,7 +176,7 @@ func gcp_delete_wait_nodepools(config *Config, cluster string, nodepool string, 
 		default:
 			{
 				fmt.Printf("Status check for nodepool %v on cluster %v  ended with unknown status %v", nodepool, cluster, deletestatus.Status)
-				panic("Error on waiting cluster: " + cluster + " nodepool: " + nodepool + "deletion status:" + deletestatus.Status)
+				die("Deleting GKE node pool '" + nodepool + "' of cluster '" + cluster + "' ended with status " + deletestatus.Status + ". Check the node pool in the GCP console, then run destroy again.")
 			}
 		}
 	}
@@ -234,14 +234,14 @@ func gcp_get_node_ip(deployment string, node string) string {
 	config := parse_yaml("/px-deploy/.px-deploy/deployments/" + deployment + ".yml")
 	computeService, err := gcp_compute_connect(config.Gcp_Auth_Json)
 	if err != nil {
-		die("error getting gcp node ip")
+		cloud_fail("gcp", "connecting to the Compute API", err)
 	}
 
 	listInstanceCall := computeService.Instances.List(config.Gcp_Project, fmt.Sprintf("%s-%s", config.Gcp_Region, config.Gcp_Zone))
 	listInstanceCall.Filter("name = " + node)
 	list, err := listInstanceCall.Do()
 	if err != nil {
-		panic("gcp instance list error, " + err.Error())
+		cloud_fail("gcp", "listing instances", err)
 	}
 
 	if len(list.Items) != 1 {

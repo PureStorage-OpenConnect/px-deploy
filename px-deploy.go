@@ -95,7 +95,7 @@ type Config struct {
 	Vsphere_Dns              string
 	Vsphere_Gw               string
 	Vsphere_Node_Ip          string
-	Vsphere_Nodemap          map[string]string
+	Vsphere_Nodemap          map[string]string `yaml:"vsphere_nodemap,omitempty"`
 	Scripts                  []string
 	Description              string
 	Env                      map[string]string
@@ -169,11 +169,11 @@ func main() {
 				if flags.IgnoreVersion {
 					fmt.Println("ignore_version set. Please update to latest release.")
 				} else {
-					die("Please update to latest release. (use --ignore_version to continue)")
+					die("A newer px-deploy release is available. Update by re-running install.sh (see the README), or pass --ignore_version to continue with this one.")
 				}
 			}
 			if len(args) > 0 {
-				die("Invalid arguments")
+				die(fmt.Sprintf("create takes no positional arguments (got '%s'). Did you mean 'px-deploy create -n %s'?", strings.Join(args, " "), args[0]))
 			}
 			config := parse_yaml("defaults.yml")
 
@@ -196,7 +196,9 @@ func main() {
 				die(prepare_error)
 			} else {
 				if !create_deployment(config) {
-					fmt.Printf("%s creation of deployment failed %s \n", Red, Reset)
+					fmt.Printf("%sCreating deployment '%s' failed.%s\n", Red, config.Name, Reset)
+					fmt.Printf("Its record is kept in %s, so 'create -n %s' will report that it already exists.\n", user_path(deployment_path(config.Name)), config.Name)
+					fmt.Printf("Run 'px-deploy destroy -n %s' to remove anything Terraform created and the local files, then try again.\n", config.Name)
 					os.Exit(1)
 				}
 				os.Chdir("/px-deploy/.px-deploy/infra")
@@ -235,7 +237,7 @@ func main() {
 				})
 			} else {
 				if destroyName == "" {
-					die("Must specify deployment to destroy")
+					die("Specify the deployment to destroy with -n <name>, or -a for all. 'px-deploy list' shows your deployments.")
 				}
 
 				if _, err := os.Stat("tf-deployments/" + destroyName + "/" + destroyName + ".lock"); err == nil {
@@ -259,13 +261,17 @@ func main() {
 		Short: "Connects to a deployment",
 		Long:  "Connects to the first master node as root, and executes optional command",
 		Run: func(cmd *cobra.Command, args []string) {
-			config := parse_yaml("deployments/" + connectName + ".yml")
+			config := load_deployment(connectName)
 			ip := get_ip(connectName)
+			if problem := reach_problem(&config, "master-1", ip); problem != "" {
+				die(problem)
+			}
 			command := ""
 			if len(args) > 0 {
 				command = args[0]
 			}
-			syscall.Exec("/usr/bin/ssh", []string{"ssh", "-oLoglevel=ERROR", "-oStrictHostKeyChecking=no", "-i", "keys/id_rsa." + config.Cloud + "." + config.Name, "root@" + ip, command}, os.Environ())
+			err := syscall.Exec("/usr/bin/ssh", []string{"ssh", "-oLoglevel=ERROR", "-oStrictHostKeyChecking=no", "-oConnectTimeout=10", "-i", key_path(&config), "root@" + ip, command}, os.Environ())
+			die("Cannot start ssh: " + err.Error())
 		},
 	}
 
@@ -274,10 +280,10 @@ func main() {
 		Short: "Stops a deployment [/cluster]",
 		Long:  "Stops all of the instances of a deployment [/cluster]",
 		Run: func(cmd *cobra.Command, args []string) {
-			config := parse_yaml("deployments/" + stopName + ".yml")
+			config := load_deployment(stopName)
 			if config.Cloud == "aws" {
 				if config.Platform == "ocp4" || config.Platform == "eks" {
-					panic("Stop not supported for " + config.Platform)
+					die(fmt.Sprintf("stop is not supported for platform %s (deployment '%s').", config.Platform, config.Name))
 				}
 				defaultConfig := parse_yaml("/px-deploy/.px-deploy/defaults.yml")
 				config.Aws_Access_Key_Id = defaultConfig.Aws_Access_Key_Id
@@ -288,11 +294,11 @@ func main() {
 
 				aws_instances, err := aws_get_instances(&config, client, stopCluster)
 				if err != nil {
-					panic(fmt.Sprintf("error listing aws instances %v \n", err.Error()))
+					cloud_fail("aws", "listing the deployment's instances", err)
 				}
 				stop_ec2_instances(client, aws_instances)
 			} else {
-				panic("Stop only supported on AWS")
+				die(fmt.Sprintf("stop is only supported on AWS (deployment '%s' is on %s).", config.Name, config.Cloud))
 			}
 		},
 	}
@@ -302,10 +308,10 @@ func main() {
 		Short: "Starts a deployment [/cluster]",
 		Long:  "Starts all of the instances of a deployment [/cluster]",
 		Run: func(cmd *cobra.Command, args []string) {
-			config := parse_yaml("deployments/" + startName + ".yml")
+			config := load_deployment(startName)
 			if config.Cloud == "aws" {
 				if config.Platform == "ocp4" || config.Platform == "eks" {
-					panic("Start not supported for " + config.Platform)
+					die(fmt.Sprintf("start is not supported for platform %s (deployment '%s').", config.Platform, config.Name))
 				}
 				defaultConfig := parse_yaml("/px-deploy/.px-deploy/defaults.yml")
 				config.Aws_Access_Key_Id = defaultConfig.Aws_Access_Key_Id
@@ -315,11 +321,11 @@ func main() {
 				client := aws_connect_ec2(&cfg)
 				aws_instances, err := aws_get_instances(&config, client, startCluster)
 				if err != nil {
-					panic(fmt.Sprintf("error listing aws instances %v \n", err.Error()))
+					cloud_fail("aws", "listing the deployment's instances", err)
 				}
 				start_ec2_instances(client, aws_instances)
 			} else {
-				panic("Stop only supported on AWS")
+				die(fmt.Sprintf("start is only supported on AWS (deployment '%s' is on %s).", config.Name, config.Cloud))
 			}
 		},
 	}
@@ -329,18 +335,23 @@ func main() {
 		Short: "Downloads kubeconfigs from clusters",
 		Long:  "Downloads kubeconfigs from clusters",
 		Run: func(cmd *cobra.Command, args []string) {
-			config := parse_yaml("deployments/" + kubeconfigName + ".yml")
+			config := load_deployment(kubeconfigName)
 			ip := get_ip(kubeconfigName)
+			if problem := reach_problem(&config, "master-1", ip); problem != "" {
+				die(problem)
+			}
 			clusters, _ := strconv.Atoi(config.Clusters)
 			for c := 1; c <= clusters; c++ {
-				cmd := exec.Command("bash", "-c", "ssh -oLoglevel=ERROR -oStrictHostKeyChecking=no -i keys/id_rsa."+config.Cloud+"."+config.Name+" root@"+ip+" ssh master-"+strconv.Itoa(c)+" cat /root/.kube/config")
+				var stderr bytes.Buffer
+				cmd := exec.Command("ssh", append(sshOpts, "-i", key_path(&config), "root@"+ip, "ssh master-"+strconv.Itoa(c)+" cat /root/.kube/config")...)
+				cmd.Stderr = &stderr
 				kubeconfig, err := cmd.Output()
 				if err != nil {
-					die(err.Error())
+					die(fmt.Sprintf("Cannot fetch the kubeconfig of cluster %v: %v", c, explain_ssh_failure("master-1", ip, created_ago(config.Name), ssh_exit_code(err), stderr.String())))
 				}
 				err = os.WriteFile("kubeconfig/"+config.Name+"."+strconv.Itoa(c), kubeconfig, 0644)
 				if err != nil {
-					die(err.Error())
+					die("Cannot write " + user_path("kubeconfig/"+config.Name+"."+strconv.Itoa(c)) + ": " + err.Error())
 				}
 			}
 		},
@@ -405,7 +416,7 @@ func main() {
 			} else if errors.Is(err, os.ErrNotExist) {
 				fmt.Printf("%slockfile for deployment %s does not exist%s\n", Yellow, statusName, Reset)
 			} else {
-				panic(err)
+				die("Cannot remove the lock file: " + err.Error())
 			}
 
 		},
@@ -416,7 +427,7 @@ func main() {
 		Short: "Returns status / IP of a deployment",
 		Long:  "Returns status / IP of a deployment",
 		Run: func(cmd *cobra.Command, args []string) {
-			config := parse_yaml("deployments/" + statusName + ".yml")
+			config := load_deployment(statusName)
 			Clusters, _ := strconv.Atoi(config.Clusters)
 
 			clusterstatus := make(chan Deployment_Status_Return, Clusters)
@@ -433,7 +444,7 @@ func main() {
 			}
 
 			for i := 1; i <= Clusters; i++ {
-				fmt.Printf(m[i])
+				fmt.Print(m[i])
 			}
 		},
 	}
@@ -767,6 +778,9 @@ func prepare_deployment(config *Config, flags *Config, createName string, create
 
 	if createTemplate != "" {
 		config.Template = createTemplate
+		if _, err := os.Stat("templates/" + createTemplate + ".yml"); errors.Is(err, os.ErrNotExist) {
+			return fmt.Sprintf("No template named '%s'. 'px-deploy templates' lists them.\n", createTemplate)
+		}
 		config_template := parse_yaml("templates/" + createTemplate + ".yml")
 		env_template = config_template.Env
 		mergo.MergeWithOverwrite(config, config_template)
@@ -868,17 +882,26 @@ func get_deployment_status(config *Config, cluster int, c chan Deployment_Status
 	case "vsphere":
 		ip = vsphere_get_node_ip(config, fmt.Sprintf("%v-master-%v", config.Name, cluster))
 	}
+	node := fmt.Sprintf("master-%v", cluster)
 	// get content of node tracking file (-> each node will add its entry when finished cloud-init/infra scripts)
-	cmd := exec.Command("ssh", "-q", "-oStrictHostKeyChecking=no", "-i", "keys/id_rsa."+config.Cloud+"."+config.Name, "root@"+ip, "cat /var/log/px-deploy/completed/tracking")
-	out, err := cmd.CombinedOutput()
+	if problem := reach_problem(config, node, ip); problem != "" {
+		c <- Deployment_Status_Return{cluster, fmt.Sprintf("cluster %v: %v\n", cluster, problem)}
+		return
+	}
+	var stderr bytes.Buffer
+	cmd := exec.Command("ssh", append(sshOpts, "-i", key_path(config), "root@"+ip, "cat /var/log/px-deploy/completed/tracking")...)
+	cmd.Stderr = &stderr
+	out, err := cmd.Output()
 	if err != nil {
-		returnvalue = fmt.Sprintf("Error get status of cluster %v\n Message: %v\n", cluster, err.Error())
-		//c <- returnvalue
+		returnvalue = fmt.Sprintf("cluster %v: %v\n", cluster, explain_ssh_failure(node, ip, created_ago(config.Name), ssh_exit_code(err), string(out)+stderr.String()))
 	} else {
 		scanner := bufio.NewScanner(strings.NewReader(string(out)))
 		ready_nodes := make(map[string]string)
 		for scanner.Scan() {
 			entry := strings.Fields(scanner.Text())
+			if len(entry) < 2 {
+				continue
+			}
 			ready_nodes[entry[0]] = entry[1]
 		}
 		if ready_nodes[fmt.Sprintf("master-%v", cluster)] != "" {
@@ -1083,7 +1106,7 @@ func create_deployment(config Config) bool {
 	if config.Lock {
 		lockfile, err := os.OpenFile("tf-deployments/"+config.Name+"/"+config.Name+".lock", os.O_RDONLY|os.O_CREATE, 0644)
 		if err != nil {
-			panic(err.Error())
+			die("Cannot create the lock file: " + err.Error())
 		}
 		lockfile.Close()
 	}
@@ -1107,7 +1130,7 @@ func run_terraform_apply(config *Config) string {
 	cmd.Env = append(cmd.Env, cloud_auth...)
 	err := cmd.Run()
 	if err != nil {
-		fmt.Println(Yellow + "ERROR: terraform plan failed. Check validity of terraform scripts" + Reset)
+		fmt.Println(Yellow + "Terraform plan failed (its error is above). Nothing was created in the cloud. Common causes: cloud credentials, a region or zone your account can't use, or a setting Terraform rejects." + Reset)
 		return err.Error()
 	} else {
 		if config.DryRun {
@@ -1121,7 +1144,7 @@ func run_terraform_apply(config *Config) string {
 		cmd.Env = append(cmd.Env, cloud_auth...)
 		errapply := cmd.Run()
 		if errapply != nil {
-			fmt.Println(Yellow + "ERROR: terraform apply failed. Check validity of terraform scripts" + Reset)
+			fmt.Println(Yellow + "Terraform apply failed (its error is above). Resources created before the failure still exist. Common causes: quota or instance limits, an image subscription your account lacks (the Rocky Linux Marketplace terms on AWS), or permissions." + Reset)
 			return errapply.Error()
 		}
 
@@ -1193,7 +1216,7 @@ func run_terraform_apply(config *Config) string {
 
 func destroy_clear(name string) {
 	os.Chdir("/px-deploy/.px-deploy")
-	config := parse_yaml("deployments/" + name + ".yml")
+	config := load_deployment(name)
 
 	fmt.Println(Yellow + "Deleting local files for deployment " + name)
 	fmt.Println("If there is any deployment in cloud " + config.Cloud + " you need to remove manually now" + Reset)
@@ -1212,7 +1235,7 @@ func destroy_clear(name string) {
 
 func destroy_deployment(name string, destroyForce bool) {
 	os.Chdir("/px-deploy/.px-deploy")
-	config := parse_yaml("deployments/" + name + ".yml")
+	config := load_deployment(name)
 	var output []byte
 
 	fmt.Println(White + "Destroying deployment '" + config.Name + "'..." + Reset)
@@ -1228,7 +1251,7 @@ func destroy_deployment(name string, destroyForce bool) {
 	logdir := "/px-deploy/.px-deploy/logs/" + name + "_" + time.Now().Format(time.RFC3339)
 	err := os.Mkdir(logdir, 0755)
 	if err != nil {
-		die("Cannot create directory " + logdir + ": " + err.Error())
+		die("Cannot create directory " + user_path(logdir) + ": " + err.Error())
 	}
 	cmd := exec.Command("bash", "-c", "(cd logs ; ls -t | tail -n +11 | xargs -n 1 rm -rf)")
 	_, err = cmd.Output()
@@ -1239,12 +1262,12 @@ func destroy_deployment(name string, destroyForce bool) {
 		fmt.Println(White + "Collecting logs for cluster " + strconv.Itoa(i) + "..." + Reset)
 		err = os.Mkdir(logdir+"/"+strconv.Itoa(i), 0755)
 		if err != nil {
-			die("Cannot create directory " + logdir + "/" + strconv.Itoa(i) + ": " + err.Error())
+			die("Cannot create directory " + user_path(logdir+"/"+strconv.Itoa(i)) + ": " + err.Error())
 		}
 		cmd := exec.Command("bash", "-c", "rsync -rtz -e 'ssh -oLoglevel=ERROR -oStrictHostKeyChecking=no -i keys/id_rsa."+config.Cloud+"."+name+" root@"+get_ip(name)+" ssh' master-"+strconv.Itoa(i)+":/var/log/px-deploy/ "+logdir+"/"+strconv.Itoa(i))
 		_, err := cmd.Output()
 		if err != nil {
-			fmt.Println("Failed to collect logs: " + err.Error())
+			fmt.Printf("Could not copy the setup logs of cluster %v (the master may already be down): %v\n", i, err)
 		}
 	}
 
@@ -1258,7 +1281,7 @@ func destroy_deployment(name string, destroyForce bool) {
 
 		aws_instances, err := aws_get_instances(&config, client, 0)
 		if err != nil {
-			panic(fmt.Sprintf("error listing aws instances %v \n", err.Error()))
+			cloud_fail("aws", "listing the deployment's instances", err)
 		}
 
 		// split aws_instances into chunks of 196 elements
@@ -1271,7 +1294,7 @@ func destroy_deployment(name string, destroyForce bool) {
 
 		aws_volumes, err := aws_get_clouddrives(aws_instances_split, config.Pxd_uuid, client)
 		if err != nil {
-			panic(fmt.Sprintf("error listing aws clouddrives %v \n", err.Error()))
+			cloud_fail("aws", "listing the Portworx cloud drives", err)
 		}
 
 		fmt.Printf("Found %d portworx clouddrive volumes. \n", len(aws_volumes))
@@ -1294,7 +1317,7 @@ func destroy_deployment(name string, destroyForce bool) {
 				cmd1.Env = append(cmd1.Env, cloud_auth...)
 				errstate1 := cmd1.Run()
 				if errstate1 != nil {
-					fmt.Println(Yellow + "ERROR: Terraform state rm helm_release.rancher_server failed. Check validity of terraform scripts" + Reset)
+					fmt.Println(Yellow + "Terraform state rm helm_release.rancher_server failed (its error is above)." + Reset)
 				}
 				cmd2 := exec.Command("terraform", "-chdir=/px-deploy/.px-deploy/tf-deployments/"+config.Name, "state", "rm", "helm_release.cert_manager")
 				cmd2.Stdout = os.Stdout
@@ -1302,7 +1325,7 @@ func destroy_deployment(name string, destroyForce bool) {
 				cmd2.Env = append(cmd2.Env, cloud_auth...)
 				errstate2 := cmd2.Run()
 				if errstate2 != nil {
-					fmt.Println(Yellow + "ERROR: Terraform state rm helm_release.cert_manager failed. Check validity of terraform scripts" + Reset)
+					fmt.Println(Yellow + "Terraform state rm helm_release.cert_manager failed (its error is above)." + Reset)
 				}
 
 			}
@@ -1383,7 +1406,7 @@ func destroy_deployment(name string, destroyForce bool) {
 
 		instances, err := gcp_get_instances(&config)
 		if err != nil {
-			die("error listing gcp instances")
+			cloud_fail("gcp", "listing the deployment's instances", err)
 		}
 
 		wg := new(sync.WaitGroup)
@@ -1392,7 +1415,7 @@ func destroy_deployment(name string, destroyForce bool) {
 		for _, val := range instances {
 			drives, err := gcp_get_clouddrives(val, &config)
 			if err != nil {
-				die("error getting clouddrive listing for instance " + val)
+				cloud_fail("gcp", "listing the Portworx cloud drives of "+val, err)
 			}
 			if len(drives) > 0 {
 				for _, drive := range drives {
@@ -1478,10 +1501,10 @@ func destroy_deployment(name string, destroyForce bool) {
 			return
 		}
 	} else {
-		die("Bad cloud")
+		die(fmt.Sprintf("Unknown cloud '%s' in %s.", config.Cloud, user_path(deployment_path(name))))
 	}
 	if err != nil {
-		die("Failed to destroy")
+		die("Destroy failed: " + err.Error())
 	}
 	fmt.Print(string(output))
 	os.Remove("deployments/" + name + ".yml")
@@ -1530,7 +1553,7 @@ func run_terraform_destroy(config *Config) string {
 		cmdinit.Stdout = os.Stdout
 		err := cmdinit.Run()
 		if err != nil {
-			fmt.Println(Red + "ERROR: Terraform init failed. Check validity of terraform scripts" + Reset)
+			fmt.Println(Red + "Terraform init failed (its error is above). The deployment's files are kept in " + user_path("tf-deployments/"+config.Name) + "." + Reset)
 			die(err.Error())
 		} else {
 			fmt.Println(Yellow + "Terraform modules updated. Re-run Terraform PLAN" + Reset)
@@ -1539,13 +1562,13 @@ func run_terraform_destroy(config *Config) string {
 			cmd.Env = append(cmd.Env, cloud_auth...)
 			err = cmd.Run()
 			if err != nil {
-				fmt.Println(Red + "ERROR: second try Terraform PLAN failed. Check validity of terraform scripts" + Reset)
+				fmt.Println(Red + "Terraform could not plan the destroy, even after re-initializing (its error is above). Check the cloud credentials in ~/.px-deploy/defaults.yml." + Reset)
 				die(err.Error())
 			}
 		}
 	} else if err != nil {
 		fmt.Printf("%s", buffer.String())
-		fmt.Println(Red + "ERROR: Terraform plan failed. Check validity of terraform scripts" + Reset)
+		fmt.Println(Red + "Terraform could not plan the destroy (its error is above). Check the cloud credentials in ~/.px-deploy/defaults.yml; the deployment's files are kept in " + user_path("tf-deployments/"+config.Name) + "." + Reset)
 		die(err.Error())
 	}
 
@@ -1557,7 +1580,7 @@ func run_terraform_destroy(config *Config) string {
 	errdestroy := cmd.Run()
 
 	if errdestroy != nil {
-		fmt.Println(Yellow + "ERROR: Terraform destroy failed. Check validity of terraform scripts" + Reset)
+		fmt.Println(Yellow + "Terraform destroy failed (its error is above). Some resources may remain. Fix the cause and run 'px-deploy destroy -n " + config.Name + "' again." + Reset)
 		die(errdestroy.Error())
 	} else {
 		os.RemoveAll("tf-deployments/" + config.Name)
@@ -1572,7 +1595,7 @@ func azure_get_node_ip(deployment string, node string) string {
 
 	cred, err := azidentity.NewClientSecretCredential(config.Azure_Tenant_Id, config.Azure_Client_Id, config.Azure_Client_Secret, nil)
 	if err != nil {
-		panic("failed to create azure credential" + err.Error())
+		cloud_fail("azure", "creating a credential", err)
 	}
 
 	ctx := context.Background()
@@ -1580,7 +1603,7 @@ func azure_get_node_ip(deployment string, node string) string {
 	// Create and authorize a ResourceGraph client
 	client, err := armresourcegraph.NewClient(cred, nil)
 	if err != nil {
-		panic("failed to create azure client: " + err.Error())
+		cloud_fail("azure", "creating a Resource Graph client", err)
 	}
 
 	results, err := client.Resources(ctx,
@@ -1591,7 +1614,7 @@ func azure_get_node_ip(deployment string, node string) string {
 		},
 		nil)
 	if err != nil {
-		panic("failed to search azure public ip:" + err.Error())
+		cloud_fail("azure", "looking up a VM's public address", err)
 	} else {
 		// https://pkg.go.dev/github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resourcegraph/armresourcegraph#QueryResponse
 		for _, value := range results.Data.([]interface{}) {
@@ -1907,7 +1930,7 @@ func write_nodescripts(config Config) {
 		cmd := exec.Command("bash", "-n", "/px-deploy/.px-deploy/tf-deployments/"+config.Name+"/master-"+masternum+"-1")
 		err = cmd.Run()
 		if err != nil {
-			die("PANIC: generated script '.px-deploy/tf-deployments/" + config.Name + "/master-" + masternum + "-1' is not valid Bash")
+			die("The generated setup script ~/.px-deploy/tf-deployments/" + config.Name + "/master-" + masternum + "-1 is not valid Bash. Check the template's scripts (and your own in ~/.px-deploy/scripts) for a syntax error: bash -n <script>")
 		}
 		// set cluster specfic node # to config node #
 		CL_Nodes := Nodes
@@ -1933,7 +1956,7 @@ func write_nodescripts(config Config) {
 				cmd := exec.Command("bash", "-n", "/px-deploy/.px-deploy/tf-deployments/"+config.Name+"/node-"+masternum+"-"+nodenum)
 				err = cmd.Run()
 				if err != nil {
-					die("PANIC: generated script '.px-deploy/tf-deployments/" + config.Name + "/node-" + masternum + "-" + nodenum + "' is not valid Bash")
+					die("The generated setup script ~/.px-deploy/tf-deployments/" + config.Name + "/node-" + masternum + "-" + nodenum + " is not valid Bash. Check the infra scripts in ~/.px-deploy/infra for a syntax error: bash -n <script>")
 				}
 
 			}
@@ -2028,15 +2051,18 @@ func log(msg string) {
 func parse_yaml(filename string) Config {
 	b, err := os.ReadFile(filename)
 	if err != nil {
-		die(err.Error())
+		if filepath.Base(filename) == "defaults.yml" && errors.Is(err, os.ErrNotExist) {
+			die("Cannot find " + user_path(filename) + ". Run install.sh (see the README) to create it.")
+		}
+		die("Cannot read " + user_path(filename) + ": " + err.Error())
 	}
 	if len(b) != utf8.RuneCount(b) {
-		die("Non-ASCII values found in " + filename)
+		die("Non-ASCII characters found in " + user_path(filename) + ". Settings must be plain ASCII (watch for smart quotes or dashes pasted from a document).")
 	}
 	var d Config
 	err = yaml.Unmarshal(b, &d)
 	if err != nil {
-		die("Broken YAML in " + filename + ": " + err.Error())
+		die("Broken YAML in " + user_path(filename) + ": " + err.Error())
 	}
 	return d
 }
